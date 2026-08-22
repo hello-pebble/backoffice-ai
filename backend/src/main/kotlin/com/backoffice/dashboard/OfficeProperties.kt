@@ -22,6 +22,7 @@ data class OfficeProperties(
     data class Automation(
         val pythonExecutable: String = "venv/Scripts/python.exe",
         val workingDirectory: String = ".",
+        val executionEnabled: Boolean = true,
     )
     data class Operations(val dataPath: String = "data/office-dashboard/operations.json")
     data class AiNews(

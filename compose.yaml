@@ -1,0 +1,40 @@
+services:
+  backoffice-api:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    env_file:
+      - ./deploy/oci.env
+    environment:
+      SPRING_PROFILES_ACTIVE: oci
+      PORT: 8080
+      OFFICE_AUTOMATION_EXECUTION_ENABLED: "false"
+      OFFICE_AUTOMATION_PYTHON_EXECUTABLE: python
+      OFFICE_AUTOMATION_WORKING_DIRECTORY: /app
+    expose:
+      - "8080"
+    volumes:
+      - backoffice-data:/app/data
+    networks:
+      - caddy
+    restart: unless-stopped
+
+  backoffice-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    env_file:
+      - ./deploy/oci.env
+    volumes:
+      - backoffice-data:/app/data
+    profiles:
+      - worker
+    restart: unless-stopped
+
+volumes:
+  backoffice-data:
+
+networks:
+  caddy:
+    external: true
+    name: ${CADDY_NETWORK:-caddy}

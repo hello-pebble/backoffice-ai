@@ -1,0 +1,6 @@
+# Add this block to the existing Caddyfile; do not replace the existing service block.
+# The API and Caddy containers must share the same Docker network.
+
+{$BACKOFFICE_API_DOMAIN} {
+    reverse_proxy backoffice-api:8080
+}
