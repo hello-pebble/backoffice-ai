@@ -14,11 +14,14 @@ repositories { mavenCentral() }
 
 dependencies {
     implementation("org.springframework.boot:spring-boot-starter-web")
+    implementation("org.springframework.boot:spring-boot-starter-jdbc")
+    implementation("org.flywaydb:flyway-core")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
     implementation("com.google.api-client:google-api-client:2.8.0")
     implementation("com.google.api-client:google-api-client-gson:2.8.0")
     implementation("com.google.oauth-client:google-oauth-client-jetty:1.39.0")
     implementation("com.google.apis:google-api-services-gmail:v1-rev20250630-2.0.0")
+    runtimeOnly("org.postgresql:postgresql")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
 }

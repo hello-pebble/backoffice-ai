@@ -7,8 +7,11 @@ import java.util.concurrent.TimeUnit
 @Service
 class PythonAutomationService(private val properties: OfficeProperties) {
     fun run(mode: String): AutomationResponse {
+        if (!properties.automation.executionEnabled) {
+            return AutomationResponse(false, null, "OCI에서는 자동화 워커가 별도 컨테이너로 실행됩니다.")
+        }
         return try {
-            val process = ProcessBuilder(properties.automation.pythonExecutable, "main.py", "--mode", mode)
+            val process = ProcessBuilder(properties.automation.pythonExecutable, "-m", "automation.main", "--mode", mode)
                 .directory(File(properties.automation.workingDirectory))
                 .redirectErrorStream(true)
                 .start()

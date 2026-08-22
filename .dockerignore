@@ -1,0 +1,16 @@
+.git
+.gradle
+.kotlin
+.idea
+.vscode
+**/__pycache__
+**/*.py[cod]
+build
+**/build
+data
+venv
+.venv
+env
+config/.env
+config/dashboard.properties
+deploy/oci.env

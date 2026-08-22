@@ -12,8 +12,8 @@ from config.settings import (
     MIN_CONTENT_LENGTH,
     MAX_KEYWORDS_PER_DAY
 )
-from utils.logger import logger
-from utils.database import Database
+from automation.shared.logger import logger
+from automation.shared.postgres_database import Database
 
 
 class ContentGenerator:

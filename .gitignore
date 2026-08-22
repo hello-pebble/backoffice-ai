@@ -1,5 +1,7 @@
 # Python
 __pycache__/
+.gradle/
+.kotlin/
 *.py[cod]
 *$py.class
 *.so
@@ -57,3 +59,4 @@ Thumbs.db
 config/dashboard.properties
 data/office-dashboard/gmail-credentials.json
 data/office-dashboard/gmail-token/
+deploy/oci.env

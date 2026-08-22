@@ -16,7 +16,7 @@ import javax.xml.XMLConstants
 import javax.xml.parsers.DocumentBuilderFactory
 
 @Service
-class AiNewsService(private val properties: OfficeProperties, private val objectMapper: ObjectMapper, private val aiOperationsService: AiOperationsService) {
+class AiNewsService(private val properties: OfficeProperties, private val objectMapper: ObjectMapper, private val aiOperationsService: AiOperationsService, private val documents: JsonDocumentStore) {
     private val client = HttpClient.newBuilder().followRedirects(HttpClient.Redirect.NORMAL).build()
     private val path get() = Path.of(properties.aiNews.dataPath)
 
@@ -78,8 +78,8 @@ class AiNewsService(private val properties: OfficeProperties, private val object
         else -> "업계 소식"
     }
     private fun hash(value: String): String = MessageDigest.getInstance("SHA-256").digest(value.toByteArray()).joinToString("") { "%02x".format(it) }
-    private fun load(): List<AiNewsItem> = if (Files.exists(path)) objectMapper.readValue(path.toFile(), objectMapper.typeFactory.constructCollectionType(List::class.java, AiNewsItem::class.java)) else emptyList()
-    private fun save(items: List<AiNewsItem>) { Files.createDirectories(path.parent); objectMapper.writerWithDefaultPrettyPrinter().writeValue(path.toFile(), items) }
+    private fun load(): List<AiNewsItem> = documents.readList("ai-news", AiNewsItem::class.java)
+    private fun save(items: List<AiNewsItem>) { documents.write("ai-news", items) }
 }
 
 data class AiNewsItem(val id: String, val source: String, val title: String, val url: String, val summary: String, val publishedAt: String?, val category: String, val read: Boolean, val collectedAt: String)

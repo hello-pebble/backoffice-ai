@@ -8,7 +8,7 @@
 |---|---|---|---|
 | 웹 화면 | `frontend/static/` | Vercel | 사용자 화면, 입력 검증, API 호출 |
 | 업무 API | `backend/` | Cloud Run | 업무 규칙, 인증, 외부 API 연동, DB 접근 |
-| 자동화 워커 | `modules/`, `utils/`, `main.py` | Cloud Run Worker/VM | 장시간 AI·영상·블로그 자동화 |
+| 자동화 워커 | `automation/` | Cloud Run Worker/VM | 장시간 AI·영상·블로그 자동화 |
 
 ## 절대 경계
 

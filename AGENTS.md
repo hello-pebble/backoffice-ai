@@ -7,7 +7,7 @@
 - 제품: 업무 대시보드, AI 운영 센터, 콘텐츠 스튜디오, 블로그 자동화
 - 화면: `frontend/static/` — Vercel 배포 대상
 - API: `backend/` — Kotlin/Spring Boot, Cloud Run 배포 대상
-- 자동화: `modules/`, `utils/`, `main.py` — Python 워커 배포 대상
+- 자동화: `automation/` — Python 워커 배포 대상
 - 운영 데이터: PostgreSQL로 이전 예정. 현재 `data/` JSON은 로컬 개발 데이터다.
 
 ## 작업 원칙

@@ -19,8 +19,8 @@ from config.settings import (
     MAX_RETRY_ATTEMPTS,
     RETRY_DELAY
 )
-from utils.logger import logger
-from utils.database import Database
+from automation.shared.logger import logger
+from automation.shared.postgres_database import Database
 
 
 class BlogPoster:

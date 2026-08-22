@@ -34,7 +34,7 @@ API 계약: POST /api/shorts, GET /api/shorts/{id}
 - 완료 조건: 쇼츠 작업 API와 상태 저장
 
 [automation-agent]
-- 수정 가능: modules/, utils/, run_*.py
+- 수정 가능: automation/
 - 완료 조건: 대본 생성과 결과 상태 전달
 
 [integration-agent]

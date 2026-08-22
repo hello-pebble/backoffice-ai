@@ -8,7 +8,7 @@ import java.time.OffsetDateTime
 import java.util.UUID
 
 @Service
-class ContentStudioService(private val objectMapper: ObjectMapper, private val aiOperationsService: AiOperationsService) {
+class ContentStudioService(private val objectMapper: ObjectMapper, private val aiOperationsService: AiOperationsService, private val documents: JsonDocumentStore) {
     private val path = Path.of("data/content-studio/packages.json")
     private val availableChannels = setOf("인스타툰", "유튜브 쇼츠", "카드뉴스", "블로그")
 
@@ -41,9 +41,9 @@ class ContentStudioService(private val objectMapper: ObjectMapper, private val a
         return packageItem
     }
 
-    @Synchronized fun list(): List<ContentPackage> = if (Files.exists(path)) objectMapper.readValue(path.toFile(), objectMapper.typeFactory.constructCollectionType(List::class.java, ContentPackage::class.java)) else emptyList()
+    @Synchronized fun list(): List<ContentPackage> = documents.readList("content-packages", ContentPackage::class.java)
 
-    private fun save(items: List<ContentPackage>) { Files.createDirectories(path.parent); objectMapper.writerWithDefaultPrettyPrinter().writeValue(path.toFile(), items) }
+    private fun save(items: List<ContentPackage>) = documents.write("content-packages", items)
     private fun channelTitle(channel: String, title: String) = when (channel) { "인스타툰" -> "$title, 공감 4컷"; "유튜브 쇼츠" -> "$title | 45초 쇼츠"; "카드뉴스" -> "$title | 핵심 6장"; else -> "$title | 블로그 초안" }
     private fun draft(channel: String, title: String, source: String, target: String): String = when (channel) {
         "인스타툰" -> "1컷: 오늘도 시작된 이야기\n2컷: $title\n3컷: \"이거, 나만 그런가?\"\n4컷: ${target}도 고개를 끄덕일 공감 포인트\n\n원본 핵심: ${source.take(220)}"
