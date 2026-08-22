@@ -39,7 +39,7 @@ jobs:
           python-version: "3.12"
 
       - name: Check Python syntax
-        run: python -m compileall -q main.py modules utils
+        run: python -m compileall -q automation
 
   frontend:
     name: frontend-check
