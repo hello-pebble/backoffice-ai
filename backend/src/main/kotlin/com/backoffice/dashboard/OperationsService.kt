@@ -1,18 +1,17 @@
 package com.backoffice.dashboard
 
-import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.stereotype.Service
 import org.springframework.jdbc.core.JdbcTemplate
-import java.nio.file.Files
-import java.nio.file.Path
 import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.util.UUID
 
 @Service
-class OperationsService(private val properties: OfficeProperties, private val objectMapper: ObjectMapper, private val documents: JsonDocumentStore, private val jdbc: JdbcTemplate) {
-    private val path get() = Path.of(properties.operations.dataPath)
-
+class OperationsService(
+    private val documents: JsonDocumentStore,
+    private val jdbc: JdbcTemplate,
+    @org.springframework.beans.factory.annotation.Value("\${app.seed-sample-data:false}") private val seedSampleData: Boolean,
+) {
     @Synchronized fun snapshot(): OperationsData = load().copy(tasks = loadTasks().toMutableList())
 
     @Synchronized fun createTask(request: CreateTaskRequest): OperationsData {
@@ -33,7 +32,6 @@ class OperationsService(private val properties: OfficeProperties, private val ob
         return save(data)
     }
 
-
     @Synchronized fun deleteTask(id: String): OperationsData {
         require(jdbc.update("delete from tasks where id = ?", id) == 1) { "업무를 찾을 수 없습니다." }
         return snapshot()
@@ -46,7 +44,8 @@ class OperationsService(private val properties: OfficeProperties, private val ob
     }
 
     private fun load(): OperationsData {
-        return documents.read("operations", OperationsData::class.java) ?: sample().also(::save)
+        documents.read("operations", OperationsData::class.java)?.let { return it }
+        return if (seedSampleData) sample().also(::save) else OperationsData()
     }
     private fun loadTasks(): List<TaskItem> = jdbc.query(
         "select id, title, team, owner_name, due_date, status from tasks order by due_date, created_at",

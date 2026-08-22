@@ -1,6 +1,7 @@
 package com.backoffice.dashboard
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.w3c.dom.Element
 import java.net.URI
@@ -17,6 +18,7 @@ import javax.xml.parsers.DocumentBuilderFactory
 
 @Service
 class AiNewsService(private val properties: OfficeProperties, private val objectMapper: ObjectMapper, private val aiOperationsService: AiOperationsService, private val documents: JsonDocumentStore) {
+    private val log = LoggerFactory.getLogger(AiNewsService::class.java)
     private val client = HttpClient.newBuilder().followRedirects(HttpClient.Redirect.NORMAL).build()
     private val path get() = Path.of(properties.aiNews.dataPath)
 
@@ -25,10 +27,15 @@ class AiNewsService(private val properties: OfficeProperties, private val object
     @Synchronized fun refresh(): List<AiNewsItem> {
         val startedAt = System.nanoTime()
         val existing = load().associateBy { it.id }.toMutableMap()
+        var failures = 0
         properties.aiNews.sources.forEach { source ->
             val (name, url) = source.split("|", limit = 2).let { it[0] to it[1] }
-            runCatching { fetch(name, url) }.getOrDefault(emptyList()).forEach { existing.putIfAbsent(it.id, it) }
+            runCatching { fetch(name, url) }
+                .onFailure { failures++; log.warn("AI 소식원 수집 실패: {}", name, it) }
+                .getOrDefault(emptyList())
+                .forEach { existing.putIfAbsent(it.id, it) }
         }
+        val allFailed = failures > 0 && failures == properties.aiNews.sources.size
         val result = existing.values.sortedByDescending { it.publishedAt ?: it.collectedAt }.take(100)
         save(result)
         aiOperationsService.record(
@@ -37,7 +44,7 @@ class AiNewsService(private val properties: OfficeProperties, private val object
             model = "모델 사용 안 함",
             tools = properties.aiNews.sources.map { "RSS · ${it.substringBefore("|")}" },
             durationMs = (System.nanoTime() - startedAt) / 1_000_000,
-            resultPreview = "공식 AI 소식 ${result.size}건을 확인했습니다.",
+            resultPreview = if (allFailed) "공식 AI 소식을 가져오지 못했습니다. 모든 소식원 요청이 실패했습니다." else "공식 AI 소식 ${result.size}건을 확인했습니다.",
         )
         return result
     }

@@ -2,6 +2,7 @@ package com.backoffice.dashboard
 
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
+import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
@@ -25,6 +26,7 @@ class DashboardController(
     private val aiNewsBriefingService: AiNewsBriefingService,
     private val aiOperationsService: AiOperationsService,
     private val contentStudioService: ContentStudioService,
+    private val jdbc: JdbcTemplate,
 ) {
     @GetMapping("/dashboard")
     fun dashboard() = DashboardResponse(
@@ -42,7 +44,12 @@ class DashboardController(
     }
 
     @GetMapping("/health")
-    fun health() = mapOf("ok" to true)
+    fun health(): ResponseEntity<Map<String, Any>> = try {
+        jdbc.queryForObject("select 1", Int::class.java)
+        ResponseEntity.ok(mapOf<String, Any>("ok" to true, "database" to "up"))
+    } catch (error: Exception) {
+        ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(mapOf<String, Any>("ok" to false, "database" to "down"))
+    }
 
     @GetMapping("/operations")
     fun operations() = operationsService.snapshot()
