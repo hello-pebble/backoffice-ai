@@ -11,11 +11,15 @@ data class OfficeProperties(
     val aiNews: AiNews = AiNews(),
 ) {
     data class Toss(
+        val enabled: Boolean = false,
+        val baseUrl: String = "https://openapi.tossinvest.com",
         val clientId: String = "",
         val clientSecret: String = "",
         val watchlist: List<String> = listOf("005930", "000660", "373220"),
     )
     data class Gmail(
+        val enabled: Boolean = false,
+        val redirectUri: String = "http://127.0.0.1:8765/api/gmail/callback",
         val credentialsPath: String = "data/office-dashboard/gmail-credentials.json",
         val tokenPath: String = "data/office-dashboard/gmail-token",
     )

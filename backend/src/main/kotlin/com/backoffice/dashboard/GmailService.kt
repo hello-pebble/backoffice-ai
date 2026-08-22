@@ -7,6 +7,7 @@ import com.google.api.client.http.javanet.NetHttpTransport
 import com.google.api.client.json.gson.GsonFactory
 import com.google.api.client.util.store.FileDataStoreFactory
 import com.google.api.services.gmail.Gmail
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import java.nio.file.Files
 import java.nio.file.Path
@@ -16,6 +17,7 @@ import java.util.concurrent.ConcurrentHashMap
 
 @Service
 class GmailService(private val properties: OfficeProperties) {
+    private val log = LoggerFactory.getLogger(GmailService::class.java)
     private val transport = NetHttpTransport()
     private val jsonFactory = GsonFactory.getDefaultInstance()
     private val states = ConcurrentHashMap<String, Boolean>()
@@ -23,6 +25,7 @@ class GmailService(private val properties: OfficeProperties) {
     private val scope = listOf("https://www.googleapis.com/auth/gmail.readonly")
 
     fun overview(): GmailOverview {
+        if (!properties.gmail.enabled) return GmailOverview(false, "Gmail 연동이 비활성화되어 있습니다.")
         if (!Files.exists(credentialsPath())) return GmailOverview(false, "Gmail OAuth 설정 파일이 없습니다.")
         return try {
             val credential = flow().loadCredential(userId) ?: return GmailOverview(false, "Gmail 연결이 아직 완료되지 않았습니다.")
@@ -34,7 +37,10 @@ class GmailService(private val properties: OfficeProperties) {
                 MailItem(headers["from"] ?: "(보낸사람 없음)", headers["subject"] ?: "(제목 없음)", headers["date"] ?: "")
             }
             GmailOverview(true, unread = unread, messages = messages)
-        } catch (error: Exception) { GmailOverview(false, "Gmail을 불러오지 못했습니다: ${error.message}") }
+        } catch (error: Exception) {
+            log.warn("Gmail 개요 조회 실패", error)
+            GmailOverview(false, "Gmail을 불러오지 못했습니다.")
+        }
     }
 
     fun authorizationUrl(): String {
@@ -42,13 +48,13 @@ class GmailService(private val properties: OfficeProperties) {
         val stateBytes = ByteArray(24).also { SecureRandom().nextBytes(it) }
         val state = Base64.getUrlEncoder().withoutPadding().encodeToString(stateBytes)
         states[state] = true
-        return flow().newAuthorizationUrl().setRedirectUri("http://127.0.0.1:8765/api/gmail/callback").setState(state).build()
+        return flow().newAuthorizationUrl().setRedirectUri(redirectUri()).setState(state).build()
     }
 
     fun completeAuthorization(code: String, state: String): Boolean {
         if (states.remove(state) != true) return false
         val flow = flow()
-        val token = flow.newTokenRequest(code).setRedirectUri("http://127.0.0.1:8765/api/gmail/callback").execute()
+        val token = flow.newTokenRequest(code).setRedirectUri(redirectUri()).execute()
         flow.createAndStoreCredential(token, userId)
         return true
     }
@@ -62,6 +68,7 @@ class GmailService(private val properties: OfficeProperties) {
                 .setDataStoreFactory(FileDataStoreFactory(tokenPath().toFile())).setAccessType("offline").build()
         }
     }
+    private fun redirectUri() = properties.gmail.redirectUri
     private fun credentialsPath() = Path.of(properties.gmail.credentialsPath)
     private fun tokenPath() = Path.of(properties.gmail.tokenPath)
 }
