@@ -1,0 +1,20 @@
+-- Convert every existing application table to the singular naming convention.
+alter table app_documents rename to app_document;
+alter table automation_keywords rename to automation_keyword;
+alter index automation_keywords_unused_idx rename to automation_keyword_unused_idx;
+alter table automation_contents rename to automation_content;
+alter index automation_contents_status_idx rename to automation_content_status_idx;
+alter table automation_posting_history rename to automation_posting_record;
+alter table dashboard_kpis rename to dashboard_kpi;
+alter table approvals rename to approval;
+alter index approvals_status_idx rename to approval_status_idx;
+alter table automation_runs rename to automation_run;
+alter index automation_runs_executed_at_idx rename to automation_run_executed_at_idx;
+alter table ai_news_items rename to ai_news_item;
+alter index ai_news_items_collected_at_idx rename to ai_news_item_collected_at_idx;
+alter table ai_news_briefings rename to ai_news_briefing;
+alter index ai_news_briefings_generated_at_idx rename to ai_news_briefing_generated_at_idx;
+alter table ai_operation_runs rename to ai_operation_run;
+alter index ai_operation_runs_executed_at_idx rename to ai_operation_run_executed_at_idx;
+alter table content_packages rename to content_package;
+alter table content_outputs rename to content_output;

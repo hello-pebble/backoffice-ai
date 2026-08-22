@@ -22,7 +22,7 @@ class OperationsService(private val properties: OfficeProperties, private val ob
     }
 
     @Synchronized fun changeTask(id: Long, request: ChangeStatusRequest): OperationsData {
-        require(jdbc.update("update task set status = ?, updated_at = now() where id = ?", request.status, id) == 1) { "업무를 찾을 수 없습니다." }
+        require(jdbc.update("update task set status = ?, updated_at = now() where id = ? and lifecycle_state = 'active'", request.status, id) == 1) { "업무를 찾을 수 없습니다." }
         return snapshot()
     }
 
@@ -35,7 +35,7 @@ class OperationsService(private val properties: OfficeProperties, private val ob
 
 
     @Synchronized fun deleteTask(id: Long): OperationsData {
-        require(jdbc.update("delete from task where id = ?", id) == 1) { "업무를 찾을 수 없습니다." }
+        require(jdbc.update("update task set lifecycle_state = 'removed', removed_at = now(), updated_at = now() where id = ? and lifecycle_state = 'active'", id) == 1) { "업무를 찾을 수 없습니다." }
         return snapshot()
     }
     @Synchronized fun recordRun(mode: String, result: AutomationResponse): AutomationRun {
@@ -49,7 +49,7 @@ class OperationsService(private val properties: OfficeProperties, private val ob
         return documents.read("operations", OperationsData::class.java) ?: sample().also(::save)
     }
     private fun loadTasks(): List<TaskItem> = jdbc.query(
-        "select id, title, team, owner_name, due_date, status from task order by due_date, created_at",
+        "select id, title, team, owner_name, due_date, status from task where lifecycle_state = 'active' order by due_date, created_at",
         { row, _ -> TaskItem(row.getLong("id"), row.getString("title"), row.getString("team"), row.getString("owner_name"), row.getDate("due_date").toLocalDate().toString(), row.getString("status")) },
     )
     private fun save(data: OperationsData): OperationsData {
