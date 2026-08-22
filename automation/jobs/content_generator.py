@@ -13,7 +13,7 @@ from config.settings import (
     MAX_KEYWORDS_PER_DAY
 )
 from automation.shared.logger import logger
-from automation.shared.database import Database
+from automation.shared.postgres_database import Database
 
 
 class ContentGenerator:

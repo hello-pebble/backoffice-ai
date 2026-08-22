@@ -1,0 +1,14 @@
+spring:
+  datasource:
+    url: ${SUPABASE_DB_URL}
+    username: ${SUPABASE_DB_USER}
+    password: ${SUPABASE_DB_PASSWORD}
+    hikari:
+      maximum-pool-size: ${SUPABASE_DB_POOL_SIZE:5}
+      minimum-idle: ${SUPABASE_DB_MIN_IDLE:1}
+      connection-timeout: 10000
+      validation-timeout: 5000
+
+server:
+  address: 0.0.0.0
+  port: ${PORT:8080}

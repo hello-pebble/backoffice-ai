@@ -18,6 +18,7 @@ class InstagramToonService(
 ) {
     fun generate(request: CreateInstagramToonRequest): InstagramToon {
         val startedAt = System.nanoTime()
+        check(properties.automation.executionEnabled) { "인스타툰 생성은 OCI 자동화 워커 연결 후 사용할 수 있습니다." }
         require(request.episode.trim().length >= 10) { "에피소드는 10자 이상 입력하세요." }
         require(request.panelCount in setOf(4, 8)) { "컷 수는 4 또는 8만 가능합니다." }
         val id = UUID.randomUUID().toString()

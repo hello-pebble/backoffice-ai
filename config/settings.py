@@ -33,7 +33,8 @@ INSTAGRAM_TOONS_DIR = DATA_DIR / 'instagram-toons'
 LOGS_DIR = DATA_DIR / 'logs'
 
 # 데이터베이스 설정
-DB_PATH = DATA_DIR / 'backoffice.db'
+SUPABASE_PG_DSN = os.getenv('SUPABASE_PG_DSN', os.getenv('SUPABASE_DB_URL', '').removeprefix('jdbc:'))
+SUPABASE_DB_USER = os.getenv('SUPABASE_DB_USER', '')
 
 # 로깅 설정
 LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')

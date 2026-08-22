@@ -1,0 +1,19 @@
+FROM eclipse-temurin:21-jdk-jammy AS build
+WORKDIR /workspace
+
+COPY gradlew gradle/ settings.gradle.kts build.gradle.kts ./
+COPY backend/build.gradle.kts backend/build.gradle.kts
+RUN chmod +x gradlew && ./gradlew :backend:dependencies --no-daemon
+
+COPY backend/ backend/
+RUN ./gradlew :backend:bootJar --no-daemon
+
+FROM eclipse-temurin:21-jre-jammy
+WORKDIR /app
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
+COPY --from=build /workspace/backend/build/libs/*.jar app.jar
+
+EXPOSE 8080
+ENTRYPOINT ["java", "-jar", "/app/app.jar"]

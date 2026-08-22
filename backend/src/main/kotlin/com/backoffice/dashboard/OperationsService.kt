@@ -2,6 +2,7 @@ package com.backoffice.dashboard
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.stereotype.Service
+import org.springframework.jdbc.core.JdbcTemplate
 import java.nio.file.Files
 import java.nio.file.Path
 import java.time.LocalDate
@@ -9,23 +10,20 @@ import java.time.OffsetDateTime
 import java.util.UUID
 
 @Service
-class OperationsService(private val properties: OfficeProperties, private val objectMapper: ObjectMapper) {
+class OperationsService(private val properties: OfficeProperties, private val objectMapper: ObjectMapper, private val documents: JsonDocumentStore, private val jdbc: JdbcTemplate) {
     private val path get() = Path.of(properties.operations.dataPath)
 
-    @Synchronized fun snapshot(): OperationsData = load()
+    @Synchronized fun snapshot(): OperationsData = load().copy(tasks = loadTasks().toMutableList())
 
     @Synchronized fun createTask(request: CreateTaskRequest): OperationsData {
         require(request.title.isNotBlank()) { "업무 제목을 입력하세요." }
-        val data = load()
-        data.tasks += TaskItem(UUID.randomUUID().toString(), request.title.trim(), request.team.ifBlank { "운영" }, request.owner.ifBlank { "미지정" }, request.dueDate ?: LocalDate.now().plusDays(7).toString(), "진행 중")
-        return save(data)
+        jdbc.update("insert into tasks (id, title, team, owner_name, due_date, status) values (?, ?, ?, ?, cast(? as date), ?)", UUID.randomUUID().toString(), request.title.trim(), request.team.ifBlank { "운영" }, request.owner.ifBlank { "미지정" }, request.dueDate ?: LocalDate.now().plusDays(7).toString(), "진행 중")
+        return snapshot()
     }
 
     @Synchronized fun changeTask(id: String, request: ChangeStatusRequest): OperationsData {
-        val data = load(); val index = data.tasks.indexOfFirst { it.id == id }
-        require(index >= 0) { "업무를 찾을 수 없습니다." }
-        data.tasks[index] = data.tasks[index].copy(status = request.status)
-        return save(data)
+        require(jdbc.update("update tasks set status = ?, updated_at = now() where id = ?", request.status, id) == 1) { "업무를 찾을 수 없습니다." }
+        return snapshot()
     }
 
     @Synchronized fun changeApproval(id: String, request: ChangeStatusRequest): OperationsData {
@@ -35,6 +33,11 @@ class OperationsService(private val properties: OfficeProperties, private val ob
         return save(data)
     }
 
+
+    @Synchronized fun deleteTask(id: String): OperationsData {
+        require(jdbc.update("delete from tasks where id = ?", id) == 1) { "업무를 찾을 수 없습니다." }
+        return snapshot()
+    }
     @Synchronized fun recordRun(mode: String, result: AutomationResponse): AutomationRun {
         val data = load()
         val run = AutomationRun(UUID.randomUUID().toString(), mode, result.success, result.exitCode, OffsetDateTime.now().toString(), result.output.takeLast(1200))
@@ -43,12 +46,14 @@ class OperationsService(private val properties: OfficeProperties, private val ob
     }
 
     private fun load(): OperationsData {
-        if (!Files.exists(path)) { val initial = sample(); save(initial); return initial }
-        return objectMapper.readValue(path.toFile(), OperationsData::class.java)
+        return documents.read("operations", OperationsData::class.java) ?: sample().also(::save)
     }
+    private fun loadTasks(): List<TaskItem> = jdbc.query(
+        "select id, title, team, owner_name, due_date, status from tasks order by due_date, created_at",
+        { row, _ -> TaskItem(row.getString("id"), row.getString("title"), row.getString("team"), row.getString("owner_name"), row.getDate("due_date").toLocalDate().toString(), row.getString("status")) },
+    )
     private fun save(data: OperationsData): OperationsData {
-        Files.createDirectories(path.parent)
-        objectMapper.writerWithDefaultPrettyPrinter().writeValue(path.toFile(), data)
+        documents.write("operations", data)
         return data
     }
     private fun sample() = OperationsData(

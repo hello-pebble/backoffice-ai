@@ -8,5 +8,5 @@ spring:
       static-locations: file:frontend/static/
 
 server:
-  address: 127.0.0.1
-  port: 8765
+  address: ${SERVER_ADDRESS:127.0.0.1}
+  port: ${PORT:8765}
