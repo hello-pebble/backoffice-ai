@@ -116,8 +116,10 @@ class DashboardController(
     }
 
     @GetMapping("/gmail/connect")
-    fun connectGmail(): ResponseEntity<Void> = try {
-        ResponseEntity.status(HttpStatus.FOUND).header("Location", gmailService.authorizationUrl()).build()
+    // 브라우저 내비게이션은 X-API-Key 헤더를 붙일 수 없다. 302 대신 URL을 돌려주고
+    // 화면에서 이동시켜, 인증 필터에 예외 경로를 뚫지 않는다.
+    fun connectGmail(): Map<String, String> = try {
+        mapOf("url" to gmailService.authorizationUrl())
     } catch (error: IllegalArgumentException) {
         throw ResponseStatusException(HttpStatus.CONFLICT, error.message)
     }
