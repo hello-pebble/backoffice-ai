@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 작업 및 배포 규칙
+    url: https://github.com/hello-pebble/backoffice-ai/blob/main/docs/DEVELOPMENT_RULES.md
+    about: 기능 요청 전 담당 영역과 분리 배포 규칙을 확인하세요.
