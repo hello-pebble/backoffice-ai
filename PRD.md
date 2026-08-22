@@ -227,7 +227,7 @@
 - **실행 방식**: 
   - Windows 작업 스케줄러로 매일 자동 실행
   - 또는 백그라운드 서비스로 실행
-- **의존성 관리**: requirements.txt
+- **의존성 관리**: automation/requirements.txt
 
 ---
 
@@ -270,7 +270,7 @@ backoffice/
 ├── config/
 │   ├── settings.py          # 설정 파일
 │   └── .env                 # 환경 변수 (API 키 등)
-├── modules/
+├── automation/jobs/
 │   ├── keyword_collector.py # 키워드 수집 모듈
 │   ├── content_generator.py # 콘텐츠 생성 모듈
 │   ├── blog_poster.py       # 블로그 포스팅 모듈
@@ -279,11 +279,11 @@ backoffice/
 │   ├── keywords/            # 키워드 데이터
 │   ├── contents/            # 생성된 콘텐츠
 │   └── logs/                # 로그 파일
-├── utils/
+├── automation/shared/
 │   ├── logger.py            # 로깅 유틸리티
 │   └── database.py          # DB 유틸리티
-├── main.py                  # 메인 실행 파일
-├── requirements.txt        # 의존성 목록
+├── automation/main.py       # 메인 실행 파일
+├── automation/requirements.txt # 의존성 목록
 └── README.md               # 프로젝트 문서
 ```
 

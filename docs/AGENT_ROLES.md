@@ -8,7 +8,7 @@
 |---|---|---|---|
 | `frontend-agent` | `frontend/` | 화면, 사용자 입력, 로딩·오류·빈 상태, API 결과 표시 | `backend/`, Python 자동화 로직 |
 | `backend-agent` | `backend/`, API 계약 | Kotlin API, DB, 인증, Gmail·주식 등 외부 연동, AI 실행 이력 | 화면 스타일, Python 작업 내부 로직 |
-| `automation-agent` | `modules/`, `utils/`, `main.py`, `run_*.py` | AI 생성, 블로그·콘텐츠·영상 자동화, 작업 재시도 | DB 직접 접근, 화면 파일 |
+| `automation-agent` | `automation/` | AI 생성, 블로그·콘텐츠·영상 자동화, 작업 재시도 | DB 직접 접근, 화면 파일 |
 | `integration-agent` | `config/*.example`, `docs/`, 배포 설정, API 계약 | 서비스 연결, 환경 변수, 배포 순서, API 호환성, 릴리스 점검 | 기능별 화면·업무 규칙의 단독 변경 |
 
 ## 작업 요청 형식

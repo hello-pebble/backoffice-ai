@@ -2,7 +2,7 @@
 import argparse
 import json
 
-from modules.instagram_toon_generator import InstagramToonGenerator
+from automation.jobs.instagram_toon.generator import InstagramToonGenerator
 
 
 def main() -> None:

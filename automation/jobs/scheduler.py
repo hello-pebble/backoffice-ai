@@ -10,10 +10,10 @@ from config.settings import (
     CONTENT_GENERATION_TIME,
     POSTING_TIME
 )
-from utils.logger import logger
-from modules.keyword_collector import KeywordCollector
-from modules.content_generator import ContentGenerator
-from modules.blog_poster import BlogPoster
+from automation.shared.logger import logger
+from automation.jobs.keyword_collector import KeywordCollector
+from automation.jobs.content_generator import ContentGenerator
+from automation.jobs.blog_poster import BlogPoster
 
 
 class Scheduler:

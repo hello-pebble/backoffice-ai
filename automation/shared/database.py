@@ -8,7 +8,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional, List, Dict, Any
 from config.settings import DB_PATH
-from utils.logger import logger
+from automation.shared.logger import logger
 
 
 class Database:
