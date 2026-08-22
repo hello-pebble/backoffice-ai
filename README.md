@@ -1,6 +1,6 @@
-# 네이버 블로그 자동 포스팅 백오피스 시스템
+# 자동포스팅 백오피스 시스템
 
-> 기존 블로그 자동화 프로젝트입니다. 개인 업무용 웹 대시보드는 [`backend/`](backend/) 서버와 [`frontend/`](frontend/) 화면으로 나뉘어 있습니다.
+> 개인 업무용 웹 대시보드는 [`backend/`](backend/) 서버와 [`frontend/`](frontend/) 화면으로 나뉘어 있습니다.
 
 ## Office Dashboard (Kotlin 웹 대시보드)
 
