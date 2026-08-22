@@ -1,0 +1,59 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# 가상 환경
+venv/
+env/
+ENV/
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 환경 변수
+.env
+config/.env
+
+# 데이터 파일
+data/
+*.db
+*.sqlite
+*.sqlite3
+
+# 로그 파일
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# 기타
+*.bak
+*.tmp
+config/dashboard.properties
+data/office-dashboard/gmail-credentials.json
+data/office-dashboard/gmail-token/

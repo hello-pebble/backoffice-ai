@@ -1,0 +1,67 @@
+package com.backoffice.dashboard
+
+import com.google.api.client.auth.oauth2.Credential
+import com.google.api.client.googleapis.auth.oauth2.GoogleAuthorizationCodeFlow
+import com.google.api.client.googleapis.auth.oauth2.GoogleClientSecrets
+import com.google.api.client.http.javanet.NetHttpTransport
+import com.google.api.client.json.gson.GsonFactory
+import com.google.api.client.util.store.FileDataStoreFactory
+import com.google.api.services.gmail.Gmail
+import org.springframework.stereotype.Service
+import java.nio.file.Files
+import java.nio.file.Path
+import java.security.SecureRandom
+import java.util.Base64
+import java.util.concurrent.ConcurrentHashMap
+
+@Service
+class GmailService(private val properties: OfficeProperties) {
+    private val transport = NetHttpTransport()
+    private val jsonFactory = GsonFactory.getDefaultInstance()
+    private val states = ConcurrentHashMap<String, Boolean>()
+    private val userId = "office-dashboard-user"
+    private val scope = listOf("https://www.googleapis.com/auth/gmail.readonly")
+
+    fun overview(): GmailOverview {
+        if (!Files.exists(credentialsPath())) return GmailOverview(false, "Gmail OAuth 설정 파일이 없습니다.")
+        return try {
+            val credential = flow().loadCredential(userId) ?: return GmailOverview(false, "Gmail 연결이 아직 완료되지 않았습니다.")
+            val gmail = gmail(credential)
+            val unread = gmail.users().labels().get("me", "INBOX").execute().messagesUnread ?: 0
+            val messages = gmail.users().messages().list("me").setLabelIds(listOf("INBOX")).setMaxResults(5).execute().messages.orEmpty().map { message ->
+                val detail = gmail.users().messages().get("me", message.id).setFormat("metadata").setMetadataHeaders(listOf("From", "Subject", "Date")).execute()
+                val headers = detail.payload.headers.associate { it.name.lowercase() to it.value }
+                MailItem(headers["from"] ?: "(보낸사람 없음)", headers["subject"] ?: "(제목 없음)", headers["date"] ?: "")
+            }
+            GmailOverview(true, unread = unread, messages = messages)
+        } catch (error: Exception) { GmailOverview(false, "Gmail을 불러오지 못했습니다: ${error.message}") }
+    }
+
+    fun authorizationUrl(): String {
+        require(Files.exists(credentialsPath())) { "Gmail OAuth 설정 파일이 없습니다." }
+        val stateBytes = ByteArray(24).also { SecureRandom().nextBytes(it) }
+        val state = Base64.getUrlEncoder().withoutPadding().encodeToString(stateBytes)
+        states[state] = true
+        return flow().newAuthorizationUrl().setRedirectUri("http://127.0.0.1:8765/api/gmail/callback").setState(state).build()
+    }
+
+    fun completeAuthorization(code: String, state: String): Boolean {
+        if (states.remove(state) != true) return false
+        val flow = flow()
+        val token = flow.newTokenRequest(code).setRedirectUri("http://127.0.0.1:8765/api/gmail/callback").execute()
+        flow.createAndStoreCredential(token, userId)
+        return true
+    }
+
+    private fun gmail(credential: Credential) = Gmail.Builder(transport, jsonFactory, credential).setApplicationName("Office Dashboard").build()
+    private fun flow(): GoogleAuthorizationCodeFlow {
+        Files.createDirectories(tokenPath())
+        Files.newBufferedReader(credentialsPath()).use { reader ->
+            val secrets = GoogleClientSecrets.load(jsonFactory, reader)
+            return GoogleAuthorizationCodeFlow.Builder(transport, jsonFactory, secrets, scope)
+                .setDataStoreFactory(FileDataStoreFactory(tokenPath().toFile())).setAccessType("offline").build()
+        }
+    }
+    private fun credentialsPath() = Path.of(properties.gmail.credentialsPath)
+    private fun tokenPath() = Path.of(properties.gmail.tokenPath)
+}

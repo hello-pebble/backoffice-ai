@@ -1,0 +1,17 @@
+# Kotlin 대시보드 설정. 복사본은 config/dashboard.properties로 저장하세요.
+office.toss.client-id=
+office.toss.client-secret=
+office.toss.watchlist=005930,000660,373220
+
+# Python 자동화의 실행 위치입니다. 자동화는 Kotlin이 호출할 때만 실행됩니다.
+office.automation.python-executable=venv/Scripts/python.exe
+office.automation.working-directory=.
+
+# AI 브리핑의 한국어 핵심 3건 요약에만 사용합니다.
+office.ai-news.summary-provider=ollama
+office.ai-news.open-ai-api-key=
+office.ai-news.summary-model=gpt-5.6-luna
+office.ai-news.ollama-base-url=http://127.0.0.1:11434
+office.ai-news.ollama-model=llama3.2:1b
+office.ai-news.input-price-per-million-usd=0.20
+office.ai-news.output-price-per-million-usd=1.20

@@ -1,0 +1,12 @@
+spring:
+  application:
+    name: office-dashboard
+  config:
+    import: optional:file:config/dashboard.properties
+  web:
+    resources:
+      static-locations: file:frontend/static/
+
+server:
+  address: 127.0.0.1
+  port: 8765
