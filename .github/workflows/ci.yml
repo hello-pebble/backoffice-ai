@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   backend:
-    name: backend-compile
+    name: backend-build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -23,10 +23,10 @@ jobs:
           java-version: "21"
           cache: gradle
 
-      - name: Compile Kotlin backend
+      - name: Build backend (compile + test)
         run: |
           chmod +x gradlew
-          ./gradlew :backend:compileKotlin --no-daemon
+          ./gradlew :backend:build --no-daemon
 
   automation:
     name: automation-check
@@ -37,9 +37,17 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+          cache: pip
+          cache-dependency-path: automation/requirements.txt
 
       - name: Check Python syntax
         run: python -m compileall -q automation
+
+      # 문법 검사만으로는 ImportError를 잡지 못한다. 실제 import 그래프를 한 번 실행한다.
+      - name: Check imports
+        run: |
+          pip install -r automation/requirements.txt
+          python -c "import automation.main"
 
   frontend:
     name: frontend-check
@@ -47,5 +55,5 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Check static frontend files
-        run: test -d frontend/static
+      - name: Check frontend syntax
+        run: node --check frontend/static/app.js
