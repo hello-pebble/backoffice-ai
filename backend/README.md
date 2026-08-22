@@ -1,6 +1,6 @@
 # Kotlin Office Dashboard
 
-Kotlin/Spring Boot 웹 서버입니다. 기존 루트의 Python 코드는 블로그 자동화 전용으로 유지하며, 이 서버가 `POST /api/automation/{keyword|content|posting|all}` 요청을 받을 때만 `main.py`를 호출합니다.
+Kotlin/Spring Boot 웹 서버입니다. Python 자동화 코드는 [`automation/`](../automation/)에 분리되어 있으며, 이 서버가 `POST /api/automation/{keyword|content|posting|all}` 요청을 받을 때만 실행합니다.
 
 ## 포함 기능
 

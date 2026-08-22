@@ -8,7 +8,7 @@ import java.util.concurrent.TimeUnit
 class PythonAutomationService(private val properties: OfficeProperties) {
     fun run(mode: String): AutomationResponse {
         return try {
-            val process = ProcessBuilder(properties.automation.pythonExecutable, "main.py", "--mode", mode)
+            val process = ProcessBuilder(properties.automation.pythonExecutable, "-m", "automation.main", "--mode", mode)
                 .directory(File(properties.automation.workingDirectory))
                 .redirectErrorStream(true)
                 .start()

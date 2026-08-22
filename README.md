@@ -25,89 +25,33 @@
 - Windows 10/11
 - Chrome 브라우저 (Selenium용)
 
-## 설치 방법
-
-1. 저장소 클론
-```bash
-git clone <repository-url>
-cd backoffice
-```
-
-2. 가상 환경 생성 및 활성화
-```bash
-python -m venv venv
-venv\Scripts\activate
-```
-
-3. 의존성 설치
-```bash
-pip install -r requirements.txt
-```
-
-4. 환경 변수 설정
-```bash
-copy config\.env.example config\.env
-```
-
-`config\.env` 파일을 열어 필요한 API 키와 계정 정보를 입력하세요:
-- `OPENAI_API_KEY`: OpenAI API 키
-- `NAVER_CLIENT_ID`: 네이버 API 클라이언트 ID
-- `NAVER_CLIENT_SECRET`: 네이버 API 클라이언트 시크릿
-- `NAVER_ID`: 네이버 계정 ID
-- `NAVER_PASSWORD`: 네이버 계정 비밀번호
-
-## 사용 방법
-
-### 스케줄러 모드 (기본)
-매일 자동으로 작업을 실행합니다.
-```bash
-python main.py --mode scheduler
-```
-
-### 키워드 수집만 실행
-```bash
-python main.py --mode keyword
-```
-
-### 콘텐츠 생성만 실행
-```bash
-python main.py --mode content
-```
-
-### 포스팅만 실행
-```bash
-python main.py --mode posting
-```
-
-### 전체 작업 순차 실행
-```bash
-python main.py --mode all
-```
-
 ## 프로젝트 구조
 
-```
-backoffice/
-├── config/                 # 설정 파일
-│   ├── settings.py         # 애플리케이션 설정
-│   └── .env                # 환경 변수 (gitignore)
-├── modules/                # 핵심 모듈
-│   ├── keyword_collector.py    # 키워드 수집
-│   ├── content_generator.py    # 콘텐츠 생성
-│   ├── blog_poster.py          # 블로그 포스팅
-│   └── scheduler.py            # 스케줄러
-├── data/                   # 데이터 저장소
-│   ├── keywords/           # 키워드 데이터
-│   ├── contents/           # 생성된 콘텐츠
-│   └── logs/               # 로그 파일
-├── utils/                  # 유틸리티
-│   ├── logger.py           # 로깅 유틸리티
-│   └── database.py         # 데이터베이스 유틸리티
-├── main.py                 # 메인 실행 파일
-├── requirements.txt        # 의존성 목록
-└── README.md               # 프로젝트 문서
+```text
+backoffice-ai/
+├── backend/                 # Kotlin · Spring API
+├── frontend/                # Vercel 화면
+├── automation/              # Python 자동화 전체
+│   ├── main.py              # 워커 시작점
+│   ├── requirements.txt     # Python 의존성
+│   ├── jobs/                # 실제 자동화 기능
+│   │   └── instagram_toon/
+│   ├── scripts/             # 수동 실행용 명령
+│   │   └── run_instagram_toon.py
+│   ├── shared/              # 공통 유틸·API 클라이언트
+│   └── README.md            # 실행 방법·환경변수 설명
+├── config/                  # 예시 설정만, 실제 비밀값 제외
+├── docs/                    # 운영·개발 규칙
+├── .github/                 # Actions, PR·Issue 템플릿
+├── build.gradle.kts         # Kotlin 전체 빌드 설정
+├── settings.gradle.kts
+├── gradlew
+├── gradlew.bat
+├── README.md
+└── AGENTS.md
 ```
 
+자동화 워커 설치와 실행 방법은 [`automation/README.md`](automation/README.md)를 참조하세요.
 ## 설정 옵션
 
 `config\.env` 파일에서 다음 설정을 변경할 수 있습니다:

@@ -23,7 +23,7 @@ class InstagramToonService(
         val id = UUID.randomUUID().toString()
         val process = ProcessBuilder(
             properties.automation.pythonExecutable,
-            "run_instagram_toon.py",
+            "-m", "automation.scripts.run_instagram_toon",
             "--id", id,
             "--episode", request.episode.trim(),
             "--tone", request.tone.ifBlank { "공감형" },

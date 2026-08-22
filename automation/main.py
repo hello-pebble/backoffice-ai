@@ -4,11 +4,11 @@
 """
 import argparse
 import sys
-from utils.logger import logger
-from modules.scheduler import Scheduler
-from modules.keyword_collector import KeywordCollector
-from modules.content_generator import ContentGenerator
-from modules.blog_poster import BlogPoster
+from automation.shared.logger import logger
+from automation.jobs.scheduler import Scheduler
+from automation.jobs.keyword_collector import KeywordCollector
+from automation.jobs.content_generator import ContentGenerator
+from automation.jobs.blog_poster import BlogPoster
 
 
 def run_scheduler():
