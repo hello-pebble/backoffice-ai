@@ -51,10 +51,10 @@ class DashboardController(
     fun createTask(@RequestBody request: CreateTaskRequest) = operationsService.createTask(request)
 
     @PatchMapping("/tasks/{id}/status")
-    fun updateTask(@PathVariable id: String, @RequestBody request: ChangeStatusRequest) = operationsService.changeTask(id, request)
+    fun updateTask(@PathVariable id: Long, @RequestBody request: ChangeStatusRequest) = operationsService.changeTask(id, request)
 
     @DeleteMapping("/tasks/{id}")
-    fun deleteTask(@PathVariable id: String) = operationsService.deleteTask(id)
+    fun deleteTask(@PathVariable id: Long) = operationsService.deleteTask(id)
 
     @PatchMapping("/approvals/{id}/status")
     fun updateApproval(@PathVariable id: String, @RequestBody request: ChangeStatusRequest) = operationsService.changeApproval(id, request)
