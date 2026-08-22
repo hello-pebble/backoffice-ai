@@ -11,11 +11,11 @@ import java.nio.file.Path
 import java.time.OffsetDateTime
 
 @Service
-class AiNewsBriefingService(private val properties: OfficeProperties, private val aiNewsService: AiNewsService, private val objectMapper: ObjectMapper, private val aiOperationsService: AiOperationsService) {
+class AiNewsBriefingService(private val properties: OfficeProperties, private val aiNewsService: AiNewsService, private val objectMapper: ObjectMapper, private val aiOperationsService: AiOperationsService, private val documents: JsonDocumentStore) {
     private val client = HttpClient.newHttpClient()
     private val path get() = Path.of(properties.aiNews.briefingPath)
 
-    fun get(): AiNewsBriefing? = if (Files.exists(path)) objectMapper.readValue(path.toFile(), AiNewsBriefing::class.java) else null
+    fun get(): AiNewsBriefing? = documents.read("ai-news-briefing", AiNewsBriefing::class.java)
 
     @Synchronized fun refresh(): AiNewsBriefing {
         val startedAt = System.nanoTime()
@@ -63,7 +63,7 @@ $newsText"""
     }
 
     private fun importance(item: AiNewsItem): Int = when (item.category) { "모델" -> 5; "에이전트" -> 4; "이미지·영상" -> 3; "연구·안전" -> 2; else -> 1 }
-    private fun save(briefing: AiNewsBriefing) { Files.createDirectories(path.parent); objectMapper.writerWithDefaultPrettyPrinter().writeValue(path.toFile(), briefing) }
+    private fun save(briefing: AiNewsBriefing) = documents.write("ai-news-briefing", briefing)
 }
 
 data class AiNewsBriefing(val generatedAt: String, val model: String, val news: List<AiNewsItem>, val items: List<AiNewsSummary>)

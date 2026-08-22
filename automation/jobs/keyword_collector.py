@@ -7,7 +7,7 @@ from datetime import datetime
 from typing import List, Dict, Any
 from config.settings import NAVER_CLIENT_ID, NAVER_CLIENT_SECRET, MIN_SEARCH_VOLUME
 from automation.shared.logger import logger
-from automation.shared.database import Database
+from automation.shared.postgres_database import Database
 
 
 class KeywordCollector:

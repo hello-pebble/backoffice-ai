@@ -9,7 +9,7 @@ import java.time.OffsetDateTime
 import java.util.UUID
 
 @Service
-class AiOperationsService(private val objectMapper: ObjectMapper) {
+class AiOperationsService(private val objectMapper: ObjectMapper, private val documents: JsonDocumentStore) {
     private val path = Path.of("data/ai-operations/runs.json")
 
     @Synchronized
@@ -58,14 +58,8 @@ class AiOperationsService(private val objectMapper: ObjectMapper) {
         )
     }
 
-    private fun load(): List<AiOperationRun> = if (Files.exists(path)) {
-        objectMapper.readValue(path.toFile(), objectMapper.typeFactory.constructCollectionType(List::class.java, AiOperationRun::class.java))
-    } else emptyList()
-
-    private fun save(items: List<AiOperationRun>) {
-        Files.createDirectories(path.parent)
-        objectMapper.writerWithDefaultPrettyPrinter().writeValue(path.toFile(), items)
-    }
+    private fun load(): List<AiOperationRun> = documents.readList("ai-operations", AiOperationRun::class.java)
+    private fun save(items: List<AiOperationRun>) = documents.write("ai-operations", items)
 }
 
 data class AiOperationRun(
