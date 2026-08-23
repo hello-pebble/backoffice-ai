@@ -14,7 +14,8 @@ class PythonAutomationServiceTest {
 
         assertFalse(response.success)
         assertNull(response.exitCode)
-        assertTrue(response.output.contains("자동화 워커"))
+        // "자동화 워커"는 runRemote 의 호출 실패 문구다. 실행 자체가 꺼진 경로에는 나오지 않는다.
+        assertTrue(response.output.contains("비활성화"))
     }
 
     @Test

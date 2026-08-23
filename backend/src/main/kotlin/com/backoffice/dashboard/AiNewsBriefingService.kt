@@ -22,6 +22,8 @@ class AiNewsBriefingService(private val properties: OfficeProperties, private va
         val useOllama = properties.aiNews.summaryProvider.equals("ollama", ignoreCase = true)
         val key = properties.aiNews.openAiApiKey.ifBlank { System.getenv("OPENAI_API_KEY") ?: "" }
         if (!useOllama) require(key.isNotBlank()) { "OpenAI API 키가 설정되지 않았습니다. config/dashboard.properties에 office.ai-news.open-ai-api-key를 설정하거나 office.ai-news.summary-provider=ollama로 변경하세요." }
+        val chatUrl = chatCompletionsUrl(properties.aiNews.openAiBaseUrl)
+        val vendor = if (useOllama) "Ollama 로컬" else URI(chatUrl).host
         val selected = aiNewsService.list().sortedByDescending { importance(it) }.take(3)
         require(selected.size >= 3) { "AI 소식을 먼저 수집한 뒤 요약하세요." }
         val newsText = selected.mapIndexed { index, item -> "${index + 1}. id=${item.id}\n제목=${item.title}\n출처=${item.source}\n내용=${item.summary}" }.joinToString("\n\n")
@@ -31,7 +33,7 @@ class AiNewsBriefingService(private val properties: OfficeProperties, private va
 
 $newsText"""
         val body = if (useOllama) objectMapper.writeValueAsString(mapOf("model" to properties.aiNews.ollamaModel, "prompt" to "당신은 사실을 과장하지 않는 한국어 AI 산업 분석가입니다.\n\n$prompt", "stream" to false, "format" to "json")) else objectMapper.writeValueAsString(mapOf("model" to properties.aiNews.summaryModel, "messages" to listOf(mapOf("role" to "system", "content" to "당신은 사실을 과장하지 않는 한국어 AI 산업 분석가입니다."), mapOf("role" to "user", "content" to prompt)), "response_format" to mapOf("type" to "json_object")))
-        val requestBuilder = HttpRequest.newBuilder(URI(if (useOllama) "${properties.aiNews.ollamaBaseUrl.trimEnd('/')}/api/generate" else "https://api.openai.com/v1/chat/completions")).header("Content-Type", "application/json")
+        val requestBuilder = HttpRequest.newBuilder(URI(if (useOllama) "${properties.aiNews.ollamaBaseUrl.trimEnd('/')}/api/generate" else chatUrl)).header("Content-Type", "application/json")
         if (!useOllama) requestBuilder.header("Authorization", "Bearer $key")
         val request = requestBuilder.POST(HttpRequest.BodyPublishers.ofString(body)).build()
         val response = client.send(request, HttpResponse.BodyHandlers.ofString())
@@ -50,15 +52,26 @@ $newsText"""
             save(it)
             aiOperationsService.record(
                 agent = "AI 뉴스 브리핑 에이전트",
-                provider = if (useOllama) "Ollama 로컬" else "OpenAI API",
+                provider = vendor,
                 model = model,
-                tools = listOf("AI 뉴스 저장소", if (useOllama) "Ollama 로컬 API" else "OpenAI Chat Completions"),
+                tools = listOf("AI 뉴스 저장소", if (useOllama) "Ollama 로컬 API" else "$vendor Chat Completions"),
                 durationMs = (System.nanoTime() - startedAt) / 1_000_000,
                 inputTokens = inputTokens,
                 outputTokens = outputTokens,
                 estimatedCostUsd = cost,
                 resultPreview = summaries.joinToString(" / ") { summary -> summary.summary },
             )
+        }
+    }
+
+    companion object {
+        // 설정값은 OpenAI SDK 의 base_url 과 같은 규칙으로, 버전 경로까지 포함한다고 본다.
+        // 다만 호스트만 적어 넣는 실수가 잦아 경로가 비어 있을 때만 /v1 을 붙여 준다.
+        // 이걸 안 하면 https://integrate.api.nvidia.com/v1 이 /v1/v1/... 이 돼 404 가 난다.
+        fun chatCompletionsUrl(baseUrl: String): String {
+            val base = baseUrl.trim().trimEnd('/')
+            val path = runCatching { URI(base).path }.getOrNull().orEmpty()
+            return if (path.isEmpty()) "$base/v1/chat/completions" else "$base/chat/completions"
         }
     }
 

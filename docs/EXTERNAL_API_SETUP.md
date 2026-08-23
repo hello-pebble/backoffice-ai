@@ -69,8 +69,8 @@
 | 항목 | 값 |
 |---|---|
 | 켜는 플래그 | 별도 플래그 없음. `OPENAI_API_KEY`가 채워지면 동작합니다. |
-| 환경 변수 | `OPENAI_API_KEY`, `OPENAI_MODEL`, `INSTAGRAM_TOON_MODEL` |
-| 백엔드 AI 뉴스 요약 | `office.ai-news.summary-provider` (기본 `ollama`), `office.ai-news.open-ai-api-key` |
+| 환경 변수 | `OPENAI_API_KEY`, `OPENAI_BASE_URL`, `OPENAI_MODEL`, `INSTAGRAM_TOON_MODEL` |
+| 백엔드 AI 뉴스 요약 | `office.ai-news.summary-provider` (기본 `ollama`), `office.ai-news.open-ai-api-key`, `office.ai-news.open-ai-base-url` (기본 `https://api.openai.com`) |
 
 **설정 안 됐을 때 동작**: 키가 비어 있으면 콘텐츠 생성이 실패 로그를 남기고 건너뜁니다. 백엔드 AI 뉴스 요약은 기본값이 로컬 `ollama`이므로 OpenAI 키 없이도 돌아갑니다. OpenAI를 쓰려면 `summary-provider=openai`로 바꿔야 합니다.
 
@@ -78,6 +78,9 @@
 - **과금이 즉시 발생합니다.** 먼저 사용량 한도를 걸어두세요.
 - `INSTAGRAM_TOON_MODEL` 기본값 `gpt-5.6-luna`, 백엔드 `summary-model` 기본값도 동일합니다. **이 모델 이름이 실제 계정에서 사용 가능한지 확인되지 않았습니다.** 없는 모델이면 404가 납니다. 최소 비용 확인 방법: 모델 목록 API로 존재 여부부터 확인.
 - Kotlin(`office.ai-news.open-ai-api-key`)과 Python(`OPENAI_API_KEY`)이 키를 따로 읽습니다. 양쪽 다 채워야 합니다.
+- 워커와 백엔드는 엔드포인트를 따로 읽습니다. 워커는 `OPENAI_BASE_URL`, 백엔드 AI 뉴스 요약은 `office.ai-news.open-ai-base-url`입니다. DeepSeek으로 완전히 옮기려면 양쪽 다 바꿔야 합니다.
+- 제공자를 바꾸면 `office.ai-news.input-price-per-million-usd` / `output-...`도 같이 바꾸세요. 기본값이 OpenAI 단가라서 AI 운영 센터의 비용 집계가 틀어집니다.
+- 호환 엔드포인트는 `response_format={"type": "json_object"}` 지원 여부가 모델마다 다릅니다. 인스타툰 생성이 JSON 파싱에서 실패하면 이 인자부터 의심하세요.
 
 ---
 
