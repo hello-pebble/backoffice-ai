@@ -74,23 +74,26 @@ python -c "import secrets; print(secrets.token_urlsafe(32))"
 - 같은 값을 Railway `OFFICE_GMAIL_REDIRECT_URI`에도 등록 — **한 글자라도 다르면 `redirect_uri_mismatch`**
 - 로컬에서도 쓸 거면 `http://127.0.0.1:8765/api/gmail/callback`도 함께 등록
 
-### ⚠️ 배포 환경에서는 이대로 동작하지 않습니다
+### 배포 환경 대응 — 완료됨
 
-`GmailService`는 자격증명을 **파일**에서 읽습니다.
+`GmailService`가 자격증명을 파일에서만 읽고 토큰을 컨테이너 파일시스템에 두던 문제를 해결했습니다.
 
-| 항목 | 경로 | Railway에서의 상태 |
+| 항목 | 이전 | 현재 |
 |---|---|---|
-| 클라이언트 JSON | `data/office-dashboard/gmail-credentials.json` | **이미지에 없음.** `Dockerfile.backend`는 `data/`를 복사하지 않고, `data/`는 `.gitignore` 대상 |
-| OAuth 토큰 | `data/office-dashboard/gmail-token/` | 컨테이너 파일시스템 → **재배포 때마다 소멸, 매번 재인증** |
+| 클라이언트 JSON | `data/.../gmail-credentials.json` 파일 전용. 이미지에 없어 배포 시 항상 실패 | `OFFICE_GMAIL_CREDENTIALS_JSON` 환경변수 우선, 없으면 파일. **로컬은 파일, 배포는 환경변수** |
+| OAuth 토큰 | `data/.../gmail-token/` — 재배포마다 소멸 | Postgres `app_documents`에 저장. **재배포해도 재인증 불필요** |
 
-즉 지금 상태로 Railway에 올리면 Gmail은 항상 `"Gmail OAuth 설정 파일이 없습니다."`를 반환합니다.
-내일 셋 중 하나를 골라야 합니다.
+Railway에 추가할 변수는 하나입니다.
 
-| 방안 | 작업량 | 비고 |
-|---|---|---|
-| A. Railway Volume을 `/app/data`에 마운트 후 JSON 업로드 | 코드 변경 없음 | 가장 빠름. 토큰도 유지됨 |
-| B. 자격증명을 env로 받고 토큰을 Postgres에 저장하도록 코드 수정 | 반나절 | 컨테이너 무상태 유지. 정공법 |
-| C. 로컬에서만 Gmail 사용 | 0 | 배포본에서는 `OFFICE_GMAIL_ENABLED=false` 유지 |
+| 변수 | 값 |
+|---|---|
+| `OFFICE_GMAIL_CREDENTIALS_JSON` | 다운로드한 클라이언트 JSON **원문을 그대로** 붙여넣기 |
+
+> Railway 변수 입력창은 여러 줄을 받으므로 JSON을 그대로 붙여넣어도 됩니다.
+> 값이 비어 있으면 파일 경로로 넘어가고, 그것도 없으면
+> `"Gmail OAuth 자격증명이 설정되지 않았습니다."`를 반환합니다.
+
+**로컬에서는 이 변수를 비워두세요.** 파일(`data/office-dashboard/gmail-credentials.json`)이 그대로 쓰입니다.
 
 ---
 

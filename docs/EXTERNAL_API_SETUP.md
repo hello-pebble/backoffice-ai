@@ -11,8 +11,9 @@
 |---|---|
 | 켜는 플래그 | `OFFICE_GMAIL_ENABLED=true` |
 | 환경 변수 | `OFFICE_GMAIL_REDIRECT_URI` |
-| 추가 파일 | `data/office-dashboard/gmail-credentials.json` (Google Cloud에서 받은 OAuth 클라이언트 JSON) |
-| 토큰 저장 위치 | `data/office-dashboard/gmail-token/` |
+| 자격증명 (로컬) | `data/office-dashboard/gmail-credentials.json` (Google Cloud에서 받은 OAuth 클라이언트 JSON) |
+| 자격증명 (배포) | `OFFICE_GMAIL_CREDENTIALS_JSON` — 같은 JSON 원문. 값이 있으면 파일보다 우선 |
+| 토큰 저장 위치 | Postgres `app_documents` (`gmail-token-*` 키). 재배포해도 유지됨 |
 
 **꺼져 있을 때 동작**: `GmailService.overview()`가 즉시 `연동 안 됨 + "Gmail 연동이 비활성화되어 있습니다."`를 반환합니다.
 켜져 있어도 credentials 파일이 없으면 `"Gmail OAuth 설정 파일이 없습니다."`, 인증 전이면 `"Gmail 연결이 아직 완료되지 않았습니다."`를 반환합니다. 예외는 잡아서 로그만 남기므로 앱이 죽지는 않습니다.
@@ -20,7 +21,7 @@
 **리스크**
 - **리다이렉트 URI는 Google Cloud 콘솔에 등록한 값과 문자 하나까지 같아야 합니다.** `OFFICE_GMAIL_REDIRECT_URI`, 콘솔 등록값, 실제 접속 도메인 세 곳이 모두 일치해야 하며 다르면 `redirect_uri_mismatch`로 실패합니다. 기본값은 로컬용 `http://127.0.0.1:8765/api/gmail/callback` 이므로, 배포 도메인에서 쓰려면 그 도메인 값을 따로 등록·설정해야 합니다.
 - `/api/gmail/callback`은 인증 필터의 예외 경로입니다. 콜백은 API 키 없이 열려 있습니다.
-- 토큰은 파일로만 저장됩니다. 컨테이너를 재생성하면 재인증이 필요합니다.
+- 토큰은 Postgres에 저장되므로 재배포해도 재인증이 필요 없습니다. DB를 비우면 재인증해야 합니다.
 - 스코프는 `gmail.readonly` 하나입니다. 발송은 불가합니다.
 
 ---

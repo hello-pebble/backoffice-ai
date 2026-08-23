@@ -24,6 +24,7 @@ office:
   gmail:
     enabled: ${OFFICE_GMAIL_ENABLED:false}
     redirect-uri: ${OFFICE_GMAIL_REDIRECT_URI:http://127.0.0.1:8765/api/gmail/callback}
+    credentials-json: ${OFFICE_GMAIL_CREDENTIALS_JSON:}
   toss:
     enabled: ${OFFICE_TOSS_ENABLED:false}
     base-url: ${OFFICE_TOSS_BASE_URL:https://openapi.tossinvest.com}

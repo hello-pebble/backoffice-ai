@@ -5,10 +5,10 @@ import com.google.api.client.googleapis.auth.oauth2.GoogleAuthorizationCodeFlow
 import com.google.api.client.googleapis.auth.oauth2.GoogleClientSecrets
 import com.google.api.client.http.javanet.NetHttpTransport
 import com.google.api.client.json.gson.GsonFactory
-import com.google.api.client.util.store.FileDataStoreFactory
 import com.google.api.services.gmail.Gmail
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
+import java.io.StringReader
 import java.nio.file.Files
 import java.nio.file.Path
 import java.security.SecureRandom
@@ -16,7 +16,7 @@ import java.util.Base64
 import java.util.concurrent.ConcurrentHashMap
 
 @Service
-class GmailService(private val properties: OfficeProperties) {
+class GmailService(private val properties: OfficeProperties, private val tokenStore: PostgresDataStoreFactory) {
     private val log = LoggerFactory.getLogger(GmailService::class.java)
     private val transport = NetHttpTransport()
     private val jsonFactory = GsonFactory.getDefaultInstance()
@@ -26,7 +26,7 @@ class GmailService(private val properties: OfficeProperties) {
 
     fun overview(): GmailOverview {
         if (!properties.gmail.enabled) return GmailOverview(false, "Gmail 연동이 비활성화되어 있습니다.")
-        if (!Files.exists(credentialsPath())) return GmailOverview(false, "Gmail OAuth 설정 파일이 없습니다.")
+        if (!hasCredentials()) return GmailOverview(false, "Gmail OAuth 자격증명이 설정되지 않았습니다.")
         return try {
             val credential = flow().loadCredential(userId) ?: return GmailOverview(false, "Gmail 연결이 아직 완료되지 않았습니다.")
             val gmail = gmail(credential)
@@ -60,15 +60,19 @@ class GmailService(private val properties: OfficeProperties) {
     }
 
     private fun gmail(credential: Credential) = Gmail.Builder(transport, jsonFactory, credential).setApplicationName("Office Dashboard").build()
-    private fun flow(): GoogleAuthorizationCodeFlow {
-        Files.createDirectories(tokenPath())
-        Files.newBufferedReader(credentialsPath()).use { reader ->
-            val secrets = GoogleClientSecrets.load(jsonFactory, reader)
-            return GoogleAuthorizationCodeFlow.Builder(transport, jsonFactory, secrets, scope)
-                .setDataStoreFactory(FileDataStoreFactory(tokenPath().toFile())).setAccessType("offline").build()
-        }
+    private fun flow(): GoogleAuthorizationCodeFlow =
+        GoogleAuthorizationCodeFlow.Builder(transport, jsonFactory, clientSecrets(), scope)
+            .setDataStoreFactory(tokenStore).setAccessType("offline").build()
+
+    /** 배포에서는 환경변수(JSON 문자열), 로컬에서는 파일을 쓴다. 환경변수가 우선한다. */
+    private fun clientSecrets(): GoogleClientSecrets {
+        val inline = properties.gmail.credentialsJson
+        if (inline.isNotBlank()) return StringReader(inline).use { GoogleClientSecrets.load(jsonFactory, it) }
+        require(Files.exists(credentialsPath())) { "Gmail OAuth 자격증명이 설정되지 않았습니다." }
+        return Files.newBufferedReader(credentialsPath()).use { GoogleClientSecrets.load(jsonFactory, it) }
     }
+
+    private fun hasCredentials() = properties.gmail.credentialsJson.isNotBlank() || Files.exists(credentialsPath())
     private fun redirectUri() = properties.gmail.redirectUri
     private fun credentialsPath() = Path.of(properties.gmail.credentialsPath)
-    private fun tokenPath() = Path.of(properties.gmail.tokenPath)
 }
