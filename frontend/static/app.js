@@ -43,3 +43,7 @@ load();
 
 
 
+
+
+
+$('automation-content-run').onclick=async()=>{const b=$('automation-content-run');b.disabled=true;b.textContent='워커 실행 중…';try{const r=await fetch('/api/automation/content',{method:'POST'});const data=await r.json();alert(data.output||(data.success?'워커 실행이 완료되었습니다.':'워커 실행에 실패했습니다.'))}catch(error){alert('워커 호출에 실패했습니다: '+error.message)}finally{b.disabled=false;b.textContent='워커 실행 테스트'}};
