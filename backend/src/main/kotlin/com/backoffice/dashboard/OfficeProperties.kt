@@ -35,6 +35,8 @@ data class OfficeProperties(
         val briefingPath: String = "data/ai-news/briefing.json",
         val summaryProvider: String = "ollama",
         val openAiApiKey: String = "",
+        // OpenAI 호환 엔드포인트로 바꿀 때만 지정한다. 예: DeepSeek은 https://api.deepseek.com
+        val openAiBaseUrl: String = "https://api.openai.com",
         val summaryModel: String = "gpt-5.6-luna",
         val ollamaBaseUrl: String = "http://127.0.0.1:11434",
         val ollamaModel: String = "llama3.2:1b",
