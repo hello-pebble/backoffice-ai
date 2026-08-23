@@ -95,6 +95,16 @@ Railway에 추가할 변수는 하나입니다.
 
 **로컬에서는 이 변수를 비워두세요.** 파일(`data/office-dashboard/gmail-credentials.json`)이 그대로 쓰입니다.
 
+### 로컬 검증 완료 (2026-08-23)
+
+- 동의 완료 후 `app_documents`에 `gmail-token-StoredCredential` 행 생성 확인
+- **리프레시 토큰 실제 값 저장 확인** — 없으면 약 1시간 뒤 재인증을 요구한다
+- 백엔드 완전 재시작(재배포 상황 재현) 후에도 **재인증 없이 연결 유지**
+- 읽지 않은 메일 개수 + 최근 5건 정상 반환
+
+남은 작업은 Railway에 `OFFICE_GMAIL_CREDENTIALS_JSON`과
+`OFFICE_GMAIL_ENABLED=true`를 등록하는 것뿐이다.
+
 ---
 
 ## 3. 토스증권 개발자센터
