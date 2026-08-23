@@ -33,7 +33,7 @@ python -c "import secrets; print(secrets.token_urlsafe(32))"
 `SPRING_FLYWAY_BASELINE_ON_MIGRATE` · `SPRING_FLYWAY_BASELINE_VERSION` · `SPRING_PROFILES_ACTIVE`
 `SUPABASE_DB_URL` · `SUPABASE_DB_USER` · `SUPABASE_DB_PASSWORD`
 
-> `APP_CORS_ALLOWED_ORIGINS`에 Vercel 운영 도메인이 들어 있는지 확인하세요.
+> `APP_CORS_ALLOWED_ORIGINS`는 `https://backoffice-ai-orpin.vercel.app` 여야 합니다 (끝 슬래시 없이).
 > 값이 비면 CORS 매핑 자체가 등록되지 않아 브라우저에서 API 호출이 막힙니다.
 
 ### 지금 추가 (필수)
@@ -51,7 +51,7 @@ python -c "import secrets; print(secrets.token_urlsafe(32))"
 | `OFFICE_TOSS_CLIENT_SECRET` | 발급값 | 토스증권 개발자센터 (§3) |
 | `OFFICE_TOSS_WATCHLIST` | `005930,000660,373220` | 원하는 종목코드 |
 | `OFFICE_GMAIL_ENABLED` | `true` | — |
-| `OFFICE_GMAIL_REDIRECT_URI` | `https://<Railway도메인>/api/gmail/callback` | Google 콘솔 등록값과 **완전 일치** (§2) |
+| `OFFICE_GMAIL_REDIRECT_URI` | `https://backoffice-ai-production.up.railway.app/api/gmail/callback` | Google 콘솔에 등록 완료 (§2) |
 | `OFFICE_AI_NEWS_SUMMARY_PROVIDER` | `openai` | 기본은 `ollama`(로컬). Railway엔 ollama가 없으므로 AI 브리핑을 쓰려면 필수 |
 | `OFFICE_AI_NEWS_OPEN_AI_API_KEY` | API 키 | OpenAI (§5) |
 | `OFFICE_AI_NEWS_SUMMARY_MODEL` | 모델명 | OpenAI (§5) — 기본값 검증 필요 |
@@ -70,7 +70,7 @@ python -c "import secrets; print(secrets.token_urlsafe(32))"
 4. 생성된 **클라이언트 JSON 파일 다운로드**
 
 ### 등록할 것
-- 승인된 리디렉션 URI에 `https://<Railway도메인>/api/gmail/callback` 추가
+- 승인된 리디렉션 URI에 `https://backoffice-ai-production.up.railway.app/api/gmail/callback` 추가 — **등록 완료**
 - 같은 값을 Railway `OFFICE_GMAIL_REDIRECT_URI`에도 등록 — **한 글자라도 다르면 `redirect_uri_mismatch`**
 - 로컬에서도 쓸 거면 `http://127.0.0.1:8765/api/gmail/callback`도 함께 등록
 
