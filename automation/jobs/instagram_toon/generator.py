@@ -6,14 +6,14 @@ from typing import Any
 
 from openai import OpenAI
 
-from config.settings import INSTAGRAM_TOON_MODEL, INSTAGRAM_TOONS_DIR, OPENAI_API_KEY
+from config.settings import INSTAGRAM_TOON_MODEL, INSTAGRAM_TOONS_DIR, OPENAI_API_KEY, OPENAI_BASE_URL
 
 
 class InstagramToonGenerator:
     """대본·컷 구성·게시 캡션을 한 번에 생성합니다."""
 
     def __init__(self) -> None:
-        self.client = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
+        self.client = OpenAI(api_key=OPENAI_API_KEY, base_url=OPENAI_BASE_URL or None) if OPENAI_API_KEY else None
 
     def generate(self, episode: str, tone: str, panel_count: int, toon_id: str) -> dict[str, Any]:
         if not self.client:
@@ -82,3 +82,4 @@ class InstagramToonGenerator:
         path = INSTAGRAM_TOONS_DIR / f"{toon['id']}.json"
         path.write_text(json.dumps(toon, ensure_ascii=False, indent=2), encoding="utf-8")
         return path
+
