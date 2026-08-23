@@ -48,7 +48,13 @@ class GmailService(private val properties: OfficeProperties, private val tokenSt
         val stateBytes = ByteArray(24).also { SecureRandom().nextBytes(it) }
         val state = Base64.getUrlEncoder().withoutPadding().encodeToString(stateBytes)
         states[state] = true
-        return flow().newAuthorizationUrl().setRedirectUri(redirectUri()).setState(state).build()
+        // approval_prompt=force: 구글은 같은 클라이언트+계정의 최초 동의에서만 리프레시 토큰을 준다.
+        // 강제하지 않으면 재동의 시 액세스 토큰만 받아 약 1시간 뒤 끊기고, 재시작마다 재인증이 필요해진다.
+        return flow().newAuthorizationUrl()
+            .setRedirectUri(redirectUri())
+            .setState(state)
+            .setApprovalPrompt("force")
+            .build()
     }
 
     fun completeAuthorization(code: String, state: String): Boolean {
