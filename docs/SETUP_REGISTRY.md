@@ -51,7 +51,7 @@ python -c "import secrets; print(secrets.token_urlsafe(32))"
 | `OFFICE_TOSS_CLIENT_SECRET` | 발급값 | 토스증권 개발자센터 (§3) |
 | `OFFICE_TOSS_WATCHLIST` | `005930,000660,373220` | 원하는 종목코드 |
 | `OFFICE_GMAIL_ENABLED` | `true` | — |
-| `OFFICE_GMAIL_REDIRECT_URI` | `https://backoffice-ai-production.up.railway.app/api/gmail/callback` | Google 콘솔에 등록 완료 (§2) |
+| `OFFICE_GMAIL_REDIRECT_URI` | `https://backoffice-ai-production.up.railway.app/api/gmail/callback` | **반드시 등록.** 누락 시 localhost로 리다이렉트돼 인증이 끝나지 않는다 |
 | `OFFICE_AI_NEWS_SUMMARY_PROVIDER` | `openai` | 기본은 `ollama`(로컬). Railway엔 ollama가 없으므로 AI 브리핑을 쓰려면 필수 |
 | `OFFICE_AI_NEWS_OPEN_AI_API_KEY` | API 키 | OpenAI (§5) |
 | `OFFICE_AI_NEWS_SUMMARY_MODEL` | 모델명 | OpenAI (§5) — 기본값 검증 필요 |

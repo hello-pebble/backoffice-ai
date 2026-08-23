@@ -23,7 +23,9 @@ app:
 office:
   gmail:
     enabled: ${OFFICE_GMAIL_ENABLED:false}
-    redirect-uri: ${OFFICE_GMAIL_REDIRECT_URI:http://127.0.0.1:8765/api/gmail/callback}
+    # 배포 프로파일의 기본값은 배포 도메인이어야 한다. localhost로 두면 환경변수 누락 시
+    # 조용히 localhost로 리다이렉트돼 인증이 끝나지 않는다.
+    redirect-uri: ${OFFICE_GMAIL_REDIRECT_URI:https://backoffice-ai-production.up.railway.app/api/gmail/callback}
     credentials-json: ${OFFICE_GMAIL_CREDENTIALS_JSON:}
   toss:
     enabled: ${OFFICE_TOSS_ENABLED:false}
