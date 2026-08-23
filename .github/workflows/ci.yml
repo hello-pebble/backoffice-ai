@@ -12,7 +12,9 @@ permissions:
 
 jobs:
   backend:
-    name: backend-build
+    # 이름을 바꾸지 말 것. develop 룰셋이 이 컨텍스트 이름을 필수 체크로 요구한다.
+    # (검증 내용은 build = 컴파일 + 테스트로 강화돼 있다)
+    name: backend-compile
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
