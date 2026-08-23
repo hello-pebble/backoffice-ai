@@ -12,6 +12,8 @@ permissions:
 
 jobs:
   backend:
+    # 이름을 바꾸지 말 것. develop 룰셋이 이 컨텍스트 이름을 필수 체크로 요구한다.
+    # (검증 내용은 build = 컴파일 + 테스트로 강화돼 있다)
     name: backend-compile
     runs-on: ubuntu-latest
     steps:
@@ -23,10 +25,10 @@ jobs:
           java-version: "21"
           cache: gradle
 
-      - name: Compile Kotlin backend
+      - name: Build backend (compile + test)
         run: |
           chmod +x gradlew
-          ./gradlew :backend:compileKotlin --no-daemon
+          ./gradlew :backend:build --no-daemon
 
   automation:
     name: automation-check
@@ -37,9 +39,17 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+          cache: pip
+          cache-dependency-path: automation/requirements.txt
 
       - name: Check Python syntax
         run: python -m compileall -q automation
+
+      # 문법 검사만으로는 ImportError를 잡지 못한다. 실제 import 그래프를 한 번 실행한다.
+      - name: Check imports
+        run: |
+          pip install -r automation/requirements.txt
+          python -c "import automation.main"
 
   frontend:
     name: frontend-check
@@ -47,5 +57,5 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Check static frontend files
-        run: test -d frontend/static
+      - name: Check frontend syntax
+        run: node --check frontend/static/app.js
