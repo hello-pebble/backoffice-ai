@@ -17,4 +17,5 @@ ENV PYTHONPATH=/app \
     SELENIUM_HEADLESS=true
 
 ENTRYPOINT ["python", "-m", "automation.main"]
-CMD ["--mode", "scheduler"]
+CMD ["--mode", "api"]
+

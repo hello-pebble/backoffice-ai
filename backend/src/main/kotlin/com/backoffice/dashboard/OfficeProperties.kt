@@ -28,6 +28,8 @@ data class OfficeProperties(
         val pythonExecutable: String = "venv/Scripts/python.exe",
         val workingDirectory: String = ".",
         val executionEnabled: Boolean = true,
+        val workerUrl: String = "",
+        val workerApiKey: String = "",
     )
     data class Operations(val dataPath: String = "data/office-dashboard/operations.json")
     data class AiNews(
@@ -49,3 +51,4 @@ data class OfficeProperties(
         ),
     )
 }
+
