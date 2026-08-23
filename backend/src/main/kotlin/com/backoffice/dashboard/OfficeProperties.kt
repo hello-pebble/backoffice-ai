@@ -28,6 +28,8 @@ data class OfficeProperties(
         val pythonExecutable: String = "venv/Scripts/python.exe",
         val workingDirectory: String = ".",
         val executionEnabled: Boolean = true,
+        val workerUrl: String = "",
+        val workerApiKey: String = "",
     )
     data class Operations(val dataPath: String = "data/office-dashboard/operations.json")
     data class AiNews(
@@ -35,8 +37,9 @@ data class OfficeProperties(
         val briefingPath: String = "data/ai-news/briefing.json",
         val summaryProvider: String = "ollama",
         val openAiApiKey: String = "",
-        // OpenAI 호환 엔드포인트로 바꿀 때만 지정한다. 예: DeepSeek은 https://api.deepseek.com
-        val openAiBaseUrl: String = "https://api.openai.com",
+        // OpenAI 호환 엔드포인트. 워커의 OPENAI_BASE_URL 과 같은 형식으로, 버전 경로까지 포함해 적는다.
+        // 예: NVIDIA NIM https://integrate.api.nvidia.com/v1
+        val openAiBaseUrl: String = "https://api.openai.com/v1",
         val summaryModel: String = "gpt-5.6-luna",
         val ollamaBaseUrl: String = "http://127.0.0.1:11434",
         val ollamaModel: String = "llama3.2:1b",
@@ -49,3 +52,4 @@ data class OfficeProperties(
         ),
     )
 }
+

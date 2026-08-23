@@ -15,8 +15,7 @@ load_dotenv(dotenv_path=env_path)
 
 # API 설정
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY', '')
-# OpenAI 호환 엔드포인트(DeepSeek 등)로 바꿀 때만 지정한다. 비우면 OpenAI 기본값.
-OPENAI_BASE_URL = os.getenv('OPENAI_BASE_URL', '') or None
+OPENAI_BASE_URL = os.getenv('OPENAI_BASE_URL', '')
 OPENAI_MODEL = os.getenv('OPENAI_MODEL', 'gpt-3.5-turbo')
 INSTAGRAM_TOON_MODEL = os.getenv('INSTAGRAM_TOON_MODEL', 'gpt-5.6-luna')
 
@@ -69,3 +68,4 @@ RETRY_DELAY = int(os.getenv('RETRY_DELAY', '5'))
 # 디렉토리 생성
 for directory in [DATA_DIR, KEYWORDS_DIR, CONTENTS_DIR, INSTAGRAM_TOONS_DIR, LOGS_DIR]:
     directory.mkdir(parents=True, exist_ok=True)
+

@@ -163,11 +163,12 @@ Railway에 추가할 변수는 하나입니다.
 | 변수 | 위치 | 용도 |
 |---|---|---|
 | `OPENAI_API_KEY` | 워커 env | 콘텐츠·인스타툰 생성 |
-| `OPENAI_BASE_URL` | 워커 env | 비우면 OpenAI. DeepSeek 등 호환 엔드포인트로 전환할 때만 지정 |
+| `OPENAI_BASE_URL` | 워커 env | 비우면 OpenAI. 현재 예시값은 NVIDIA NIM `https://integrate.api.nvidia.com/v1` |
 | `OPENAI_MODEL` | 워커 env | 기본 `gpt-3.5-turbo` |
 | `INSTAGRAM_TOON_MODEL` | 워커 env | 기본 `gpt-5.6-luna` |
 | `OFFICE_AI_NEWS_OPEN_AI_API_KEY` | Railway | 백엔드 AI 뉴스 요약 |
-| `OFFICE_AI_NEWS_OPEN_AI_BASE_URL` | Railway | 비우면 OpenAI. DeepSeek이면 `https://api.deepseek.com` |
+| `OFFICE_AI_NEWS_OPEN_AI_BASE_URL` | Railway | 워커의 `OPENAI_BASE_URL` 과 같은 형식. 버전 경로까지 포함한다: `https://integrate.api.nvidia.com/v1` |
+| `OFFICE_AI_NEWS_SUMMARY_PROVIDER` | Railway | **`openai` 로 바꿔야 한다.** 기본값 `ollama` 로 두면 이 설정이 전부 무시된다 |
 | `OFFICE_AI_NEWS_SUMMARY_MODEL` | Railway | 요약 모델 ID. 엔드포인트를 바꿨으면 반드시 같이 바꾼다 |
 | `OFFICE_AI_NEWS_INPUT_PRICE_PER_MILLION_USD` / `..._OUTPUT_...` | Railway | 기본값은 OpenAI 단가다. 다른 제공자면 비용 기록이 틀어진다 |
 
