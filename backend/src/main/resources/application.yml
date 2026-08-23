@@ -23,6 +23,10 @@ app:
     allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:}
 
 office:
+  automation:
+    execution-enabled: ${OFFICE_AUTOMATION_EXECUTION_ENABLED:true}
+    worker-url: ${OFFICE_AUTOMATION_WORKER_URL:}
+    worker-api-key: ${OFFICE_AUTOMATION_WORKER_API_KEY:}
   gmail:
     enabled: ${OFFICE_GMAIL_ENABLED:false}
     redirect-uri: ${OFFICE_GMAIL_REDIRECT_URI:http://127.0.0.1:8765/api/gmail/callback}
@@ -32,3 +36,5 @@ office:
     base-url: ${OFFICE_TOSS_BASE_URL:https://openapi.tossinvest.com}
     client-id: ${OFFICE_TOSS_CLIENT_ID:}
     client-secret: ${OFFICE_TOSS_CLIENT_SECRET:}
+
+
