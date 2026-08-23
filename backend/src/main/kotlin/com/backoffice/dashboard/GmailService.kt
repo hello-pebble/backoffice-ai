@@ -44,7 +44,7 @@ class GmailService(private val properties: OfficeProperties, private val tokenSt
     }
 
     fun authorizationUrl(): String {
-        require(Files.exists(credentialsPath())) { "Gmail OAuth 설정 파일이 없습니다." }
+        require(hasCredentials()) { "Gmail OAuth 자격증명이 설정되지 않았습니다." }
         val stateBytes = ByteArray(24).also { SecureRandom().nextBytes(it) }
         val state = Base64.getUrlEncoder().withoutPadding().encodeToString(stateBytes)
         states[state] = true

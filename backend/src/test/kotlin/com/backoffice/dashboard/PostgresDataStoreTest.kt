@@ -1,9 +1,6 @@
 package com.backoffice.dashboard
 
-import com.fasterxml.jackson.databind.ObjectMapper
 import org.junit.jupiter.api.Test
-import org.mockito.Mockito.mock
-import org.springframework.jdbc.core.JdbcTemplate
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
@@ -49,16 +46,4 @@ class PostgresDataStoreTest {
         assertEquals("A", PostgresDataStoreFactory(documents).getDataStore<String>("creds").get("k"))
         assertEquals("B", PostgresDataStoreFactory(documents).getDataStore<String>("other").get("k"))
     }
-}
-
-/** JdbcTemplate 없이 write/read 왕복만 재현하는 대역. */
-private class FakeDocumentStore : JsonDocumentStore(mock(JdbcTemplate::class.java), ObjectMapper()) {
-    private val saved = mutableMapOf<String, Any>()
-
-    override fun write(key: String, value: Any) {
-        saved[key] = value
-    }
-
-    @Suppress("UNCHECKED_CAST")
-    override fun <T> read(key: String, type: Class<T>): T? = saved[key] as T?
 }
