@@ -112,7 +112,9 @@ class DashboardController(
     } catch (error: IllegalStateException) {
         throw ResponseStatusException(HttpStatus.BAD_GATEWAY, error.message)
     } catch (error: Exception) {
-        throw ResponseStatusException(HttpStatus.BAD_GATEWAY, "AI 브리핑 처리 중 오류가 발생했습니다. AI 운영 센터에서 실행 상태를 확인하세요.")
+        // 서비스가 원인과 대상 주소를 메시지에 담아 IllegalStateException 으로 올린다.
+        // 여기까지 오는 건 그 밖의 경우뿐이라 예외 종류라도 남긴다.
+        throw ResponseStatusException(HttpStatus.BAD_GATEWAY, "AI 브리핑 처리 중 오류가 발생했습니다: ${AiNewsBriefingService.reasonOf(error)}")
     }
 
     @GetMapping("/gmail/connect")
