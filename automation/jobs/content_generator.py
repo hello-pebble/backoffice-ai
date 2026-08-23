@@ -8,6 +8,7 @@ from typing import Dict, Any, Optional
 from openai import OpenAI
 from config.settings import (
     OPENAI_API_KEY, 
+    OPENAI_BASE_URL,
     OPENAI_MODEL, 
     MIN_CONTENT_LENGTH,
     MAX_KEYWORDS_PER_DAY
@@ -22,7 +23,7 @@ class ContentGenerator:
     def __init__(self):
         """콘텐츠 생성기 초기화"""
         self.db = Database()
-        self.client = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
+        self.client = OpenAI(api_key=OPENAI_API_KEY, base_url=OPENAI_BASE_URL) if OPENAI_API_KEY else None
         self.model = OPENAI_MODEL
     
     def generate_title(self, keyword: str) -> str:
