@@ -2,8 +2,8 @@ const $=id=>document.getElementById(id), won=n=>new Intl.NumberFormat('ko-KR',{s
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let operations;
 const KEY='backoffice-api-key',_fetch=window.fetch.bind(window);
-window.fetch=(u,o={})=>{const k=sessionStorage.getItem(KEY);return _fetch(u,(String(u).startsWith('/api/')&&k)?{...o,headers:{...(o.headers||{}),'X-API-Key':k}}:o).then(r=>{if(r.status===401){sessionStorage.removeItem(KEY);askKey()}return r})};
-function askKey(){const k=window.prompt('백오피스 API 키를 입력하세요.');if(k){sessionStorage.setItem(KEY,k);location.reload()}}
+window.fetch=(u,o={})=>{const k=localStorage.getItem(KEY);return _fetch(u,(String(u).startsWith('/api/')&&k)?{...o,headers:{...(o.headers||{}),'X-API-Key':k}}:o).then(r=>{if(r.status===401){localStorage.removeItem(KEY);askKey()}return r})};
+function askKey(){const k=window.prompt('백오피스 API 키를 입력하세요.');if(k){localStorage.setItem(KEY,k);location.reload()}}
 function row(left,sub,right){return `<div class="row"><div><b>${left}</b><span>${sub}</span></div><div class="right">${right}</div></div>`}
 function renderOperations(data){operations=data; const k=data.kpi; $('revenue').textContent=won(k.revenue);$('expense').textContent=won(k.expense);$('achievement').textContent=k.target?`${Math.round(k.revenue/k.target*100)}%`:'—';$('week-change').textContent=`전주 대비 ${k.weekChange>0?'+':''}${k.weekChange}%`;
  const pending=data.approvals.filter(x=>x.status==='대기'), late=data.tasks.filter(x=>x.status==='지연');$('attention').textContent=pending.length+late.length;$('sample-notice').textContent=data.isSample?'현재 KPI·업무·승인 정보는 예시 데이터입니다. 실제 현황으로 수정해 사용하세요.':'';

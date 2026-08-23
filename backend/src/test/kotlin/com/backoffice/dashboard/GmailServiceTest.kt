@@ -36,6 +36,9 @@ class GmailServiceTest {
         assertTrue(url.startsWith("https://accounts.google.com/o/oauth2/auth"), "실제 URL: $url")
         assertTrue(url.contains("client_id=test-client-id"), "실제 URL: $url")
         assertTrue(url.contains("gmail.readonly"), "요청 스코프가 빠졌다: $url")
+        assertTrue(url.contains("access_type=offline"), "리프레시 토큰 요청이 빠졌다: $url")
+        // 강제 재동의가 빠지면 재연결 시 리프레시 토큰이 오지 않아 약 1시간 뒤 끊긴다.
+        assertTrue(url.contains("approval_prompt=force"), "강제 재동의가 빠졌다: $url")
     }
 
     @Test
