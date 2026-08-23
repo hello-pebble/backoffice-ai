@@ -1,3 +1,19 @@
+const KEY='backoffice-api-key',_fetch=window.fetch.bind(window);
+window.fetch=(u,o={})=>{
+ const k=localStorage.getItem(KEY);
+ return _fetch(u,(String(u).startsWith('/api/')&&k)?{...o,headers:{...(o.headers||{}),'X-API-Key':k}}:o).then(r=>{
+  if(r.status===401) askKey();
+  return r;
+ });
+};
+let asking=false;
+function askKey(){
+ if(asking)return;
+ asking=true;
+ localStorage.removeItem(KEY);
+ const k=window.prompt('백오피스 API 키를 입력하세요.');
+ if(k){localStorage.setItem(KEY,k);location.reload()}else{asking=false}
+}
 const $=id=>document.getElementById(id), won=n=>new Intl.NumberFormat('ko-KR',{style:'currency',currency:'KRW',maximumFractionDigits:0}).format(n||0);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function row(left,sub,right){return `<div class="row"><div><b>${left}</b><span>${sub}</span></div><div class="right">${right}</div></div>`}
@@ -23,4 +39,5 @@ $('briefing-refresh').onclick=async()=>{const b=$('briefing-refresh');b.disabled
 $('ai-operations-refresh').onclick=async()=>renderAiOperations(await fetch('/api/ai-operations').then(r=>r.json()));
 $('content-package-form').onsubmit=async e=>{e.preventDefault();const form=e.target,button=$('content-package-submit');const data=new FormData(form);const payload={source:data.get('source'),tone:data.get('tone'),target:data.get('target'),channels:data.getAll('channels')};button.disabled=true;button.textContent='패키지 생성 중…';try{const r=await fetch('/api/content-packages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});if(!r.ok){const error=await r.json();throw new Error(error.detail||'콘텐츠 패키지 생성에 실패했습니다.')}form.reset();renderContentPackages(await fetch('/api/content-packages').then(response=>response.json()));renderAiOperations(await fetch('/api/ai-operations').then(response=>response.json()))}catch(error){alert(error.message)}finally{button.disabled=false;button.textContent='콘텐츠 패키지 생성'}};
 load();
+
 
