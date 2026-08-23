@@ -31,3 +31,20 @@
 롤백 기준: 콘텐츠 패키지 생성 오류가 반복되면 v0.1.x로 복원
 
 상세 배포 절차: [브랜치 및 배포 전략](BRANCH_STRATEGY.md)
+
+## Unreleased
+
+| 구분 | 내용 |
+|---|---|
+| 추가 | API 키 인증 추가. `/api/` 요청에 `X-API-Key` 헤더가 필요합니다(`/api/health`, `/api/gmail/callback` 제외) |
+| 추가 | 외부 API 연결 안내 문서 [docs/EXTERNAL_API_SETUP.md](EXTERNAL_API_SETUP.md) |
+| 변경 | 헬스 체크가 실제로 DB를 확인합니다. 접속 실패 시 503과 `database: down`을 반환합니다 |
+| 변경 | 토스증권·Gmail 주소를 코드에서 빼고 환경 변수로 옮겼습니다 |
+| 변경 | 샘플 데이터 자동 입력을 기본 꺼짐으로 바꿨습니다 |
+| 변경 | CI가 백엔드 테스트, Python import 검사, 프런트엔드 문법 검사를 실제로 수행합니다 |
+| 수정 | 화면에 값을 표시할 때 HTML 이스케이프가 빠져 있던 문제 |
+| 운영 | 사용하지 않던 SQLite 계층을 제거했습니다 |
+| 운영 | 배포 환경에 `APP_AUTH_API_KEY`를 반드시 설정해야 합니다. 비어 있으면 앱이 시작되지 않습니다 |
+
+배포 확인: Vercel / API / 워커
+롤백 기준: 인증 도입 후 프런트엔드에서 401이 계속 발생하면 `APP_AUTH_ENABLED=false`로 되돌립니다

@@ -1,7 +1,23 @@
 # Kotlin 대시보드 설정. 복사본은 config/dashboard.properties로 저장하세요.
+# 같은 값을 환경 변수(config/env.example 참고)로도 줄 수 있습니다. 배포 환경에서는 환경 변수를 사용하세요.
+
+# 접근 인증. enabled=true 인데 api-key 가 비어 있으면 앱이 시작되지 않습니다.
+app.auth.enabled=false
+app.auth.api-key=
+app.cors.allowed-origins=http://127.0.0.1:8765
+
+# 토스증권 Open API. 자격증명을 받은 뒤 enabled=true 로 바꾸세요.
+office.toss.enabled=false
+office.toss.base-url=https://openapi.tossinvest.com
 office.toss.client-id=
 office.toss.client-secret=
 office.toss.watchlist=005930,000660,373220
+
+# Gmail 연동. redirect-uri 는 Google Cloud 콘솔에 등록한 값과 정확히 같아야 합니다.
+office.gmail.enabled=false
+office.gmail.redirect-uri=http://127.0.0.1:8765/api/gmail/callback
+office.gmail.credentials-path=data/office-dashboard/gmail-credentials.json
+office.gmail.token-path=data/office-dashboard/gmail-token
 
 # Python 자동화의 실행 위치입니다. 자동화는 Kotlin이 호출할 때만 실행됩니다.
 office.automation.python-executable=venv/Scripts/python.exe
