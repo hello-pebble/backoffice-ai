@@ -11,13 +11,18 @@ data class OfficeProperties(
     val aiNews: AiNews = AiNews(),
 ) {
     data class Toss(
+        val enabled: Boolean = false,
+        val baseUrl: String = "https://openapi.tossinvest.com",
         val clientId: String = "",
         val clientSecret: String = "",
         val watchlist: List<String> = listOf("005930", "000660", "373220"),
     )
     data class Gmail(
+        val enabled: Boolean = false,
+        val redirectUri: String = "http://127.0.0.1:8765/api/gmail/callback",
         val credentialsPath: String = "data/office-dashboard/gmail-credentials.json",
-        val tokenPath: String = "data/office-dashboard/gmail-token",
+        // 배포용. 클라이언트 JSON 원문을 그대로 넣는다. 값이 있으면 credentialsPath보다 우선한다.
+        val credentialsJson: String = "",
     )
     data class Automation(
         val pythonExecutable: String = "venv/Scripts/python.exe",

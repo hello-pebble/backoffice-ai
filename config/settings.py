@@ -24,6 +24,8 @@ NAVER_CLIENT_SECRET = os.getenv('NAVER_CLIENT_SECRET', '')
 # 네이버 블로그 계정 정보
 NAVER_ID = os.getenv('NAVER_ID', '')
 NAVER_PASSWORD = os.getenv('NAVER_PASSWORD', '')
+# 네이버 자동 로그인/발행 opt-in 스위치 (기본 비활성화)
+NAVER_LOGIN_ENABLED = os.getenv('NAVER_LOGIN_ENABLED', 'False').lower() == 'true'
 
 # 데이터 디렉토리 경로
 DATA_DIR = BASE_DIR / 'data'
@@ -35,6 +37,7 @@ LOGS_DIR = DATA_DIR / 'logs'
 # 데이터베이스 설정
 SUPABASE_PG_DSN = os.getenv('SUPABASE_PG_DSN', os.getenv('SUPABASE_DB_URL', '').removeprefix('jdbc:'))
 SUPABASE_DB_USER = os.getenv('SUPABASE_DB_USER', '')
+SUPABASE_DB_PASSWORD = os.getenv('SUPABASE_DB_PASSWORD', '')
 
 # 로깅 설정
 LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')

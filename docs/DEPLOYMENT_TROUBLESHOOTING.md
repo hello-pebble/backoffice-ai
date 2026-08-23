@@ -134,3 +134,72 @@ SPRING_FLYWAY_BASELINE_VERSION=0
 4. Networking에서 포트 `8080`으로 공개 도메인을 생성합니다.
 5. `https://생성된-도메인/api/health`에 접속해 정상 응답을 확인합니다.
 6. 이후 Vercel 프런트엔드의 API 경로를 Railway 도메인으로 연결하고 Task 생성·상태 변경·삭제를 확인합니다.
+
+## 5. APP_AUTH_API_KEY가 비어 있어 앱이 시작되지 않는 오류
+
+### 문제 상황
+
+배포 후 컨테이너가 기동 직후 종료되고 로그에 아래 메시지가 남습니다.
+
+```text
+app.auth.enabled=true 이지만 app.auth.api-key 가 비어 있습니다.
+```
+
+### 원인
+
+`ApiKeyAuthFilter`는 생성 시점에 인증이 켜져 있는데 키가 비어 있으면 곧바로 실패하도록 만들었습니다. 키 없이 인증만 켜진 상태로 공개 배포되는 것을 막기 위한 의도된 동작입니다. `application-oci.yml`에서 `APP_AUTH_ENABLED` 기본값이 `true`이므로, 배포 환경에서 키를 넣지 않으면 반드시 이 오류가 납니다.
+
+### 해결 방법
+
+Railway Variables(또는 `deploy/oci.env`)에 충분히 긴 임의 문자열을 `APP_AUTH_API_KEY`로 저장합니다. 로컬에서만 확인할 때는 `APP_AUTH_ENABLED=false`로 두면 됩니다.
+
+### 재발 방지
+
+- 새 배포 환경을 만들 때 `APP_AUTH_API_KEY`를 먼저 등록합니다.
+- 키는 문서·Git·채팅에 남기지 않습니다.
+
+## 6. 인증을 켠 뒤 프런트엔드가 401을 받는 문제
+
+### 문제 상황
+
+`APP_AUTH_ENABLED=true`로 바꾼 뒤 대시보드 화면이 비고, 응답이 아래와 같습니다.
+
+```json
+{"detail":"인증에 실패했습니다."}
+```
+
+### 원인
+
+`/api/`로 시작하는 요청은 `X-API-Key` 헤더가 서버 키와 일치해야 통과합니다. 현재 `frontend/static/app.js`에는 API 키를 저장하거나 헤더에 실어 보내는 코드가 없습니다. 즉 인증을 켜면 프런트엔드는 예외 경로(`/api/health`, `/api/gmail/callback`)를 제외한 모든 호출에서 401을 받습니다.
+
+### 해결 방법
+
+- 임시 확인용: `APP_AUTH_ENABLED=false`로 되돌립니다.
+- 정상 해결: 프런트엔드가 `X-API-Key` 헤더를 보내도록 수정합니다. `/api/health`는 인증 없이 열려 있으므로, 헬스 체크가 정상인데 나머지가 401이면 이 문제입니다.
+
+### 재발 방지
+
+- 인증을 켜는 배포와 프런트엔드 키 설정은 같은 시점에 반영합니다.
+
+## 7. 헬스 체크가 503을 반환
+
+### 문제 상황
+
+`/api/health`가 아래를 반환합니다.
+
+```json
+{"ok":false,"database":"down"}
+```
+
+### 원인
+
+이전에는 헬스 체크가 아무것도 확인하지 않고 항상 `ok:true`를 반환했습니다. 지금은 실제로 DB에 `select 1`을 실행하며, 실패하면 HTTP 503과 함께 `database: down`을 반환합니다. **503은 헬스 체크의 오작동이 아니라 DB에 실제로 접속하지 못한다는 뜻입니다.**
+
+### 해결 방법
+
+`SUPABASE_DB_URL` / `SUPABASE_DB_USER` / `SUPABASE_DB_PASSWORD` 값과 Supabase 프로젝트 상태(일시 중지 여부), 커넥션 풀 한도를 확인합니다.
+
+### 재발 방지
+
+- 배포 확인 절차에서 `/api/health`의 응답 본문까지 확인합니다. 200과 `ok:true`가 모두 나와야 정상입니다.
+- 무료 플랜 Supabase는 유휴 상태에서 프로젝트가 중지될 수 있습니다.

@@ -2,6 +2,7 @@ package com.backoffice.dashboard
 
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
+import org.slf4j.LoggerFactory
 import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
 import org.springframework.stereotype.Service
@@ -9,10 +10,12 @@ import org.springframework.web.client.RestClient
 
 @Service
 class TossService(private val properties: OfficeProperties, private val objectMapper: ObjectMapper) {
-    private val client = RestClient.builder().baseUrl("https://openapi.tossinvest.com").build()
+    private val log = LoggerFactory.getLogger(TossService::class.java)
+    private val client = RestClient.builder().baseUrl(properties.toss.baseUrl).build()
     private val names = mapOf("005930" to "삼성전자", "000660" to "SK하이닉스", "373220" to "LG에너지솔루션")
 
     fun overview(): StockOverview {
+        if (!properties.toss.enabled) return StockOverview(false, "토스증권 연동이 비활성화되어 있습니다.")
         if (properties.toss.clientId.isBlank() || properties.toss.clientSecret.isBlank()) {
             return StockOverview(false, "토스증권 Open API 자격증명이 아직 설정되지 않았습니다.")
         }
@@ -31,7 +34,8 @@ class TossService(private val properties: OfficeProperties, private val objectMa
             }.orEmpty()
             StockOverview(true, items = items)
         } catch (error: Exception) {
-            StockOverview(false, error.message ?: "토스증권 시세를 불러오지 못했습니다.")
+            log.warn("토스증권 시세 조회 실패", error)
+            StockOverview(false, "토스증권 시세를 불러오지 못했습니다.")
         }
     }
 }

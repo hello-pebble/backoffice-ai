@@ -14,6 +14,7 @@ from selenium.common.exceptions import TimeoutException, NoSuchElementException
 from config.settings import (
     NAVER_ID,
     NAVER_PASSWORD,
+    NAVER_LOGIN_ENABLED,
     SELENIUM_HEADLESS,
     SELENIUM_WAIT_TIME,
     MAX_RETRY_ATTEMPTS,
@@ -68,6 +69,14 @@ class BlogPoster:
         Returns:
             로그인 성공 여부
         """
+        if not NAVER_LOGIN_ENABLED:
+            logger.warning(
+                "네이버 자동 로그인/발행이 비활성화되어 있습니다. "
+                "실제 발행은 검토 후 수동 승인이 원칙입니다. "
+                "활성화하려면 환경 변수 NAVER_LOGIN_ENABLED=true 로 설정하세요."
+            )
+            return False
+        
         if not self.driver:
             self._init_driver()
         
@@ -122,6 +131,14 @@ class BlogPoster:
         Returns:
             포스팅된 블로그 URL (실패 시 None)
         """
+        if not NAVER_LOGIN_ENABLED:
+            logger.warning(
+                "네이버 자동 로그인/발행이 비활성화되어 있습니다. "
+                "실제 발행은 검토 후 수동 승인이 원칙입니다. "
+                "활성화하려면 환경 변수 NAVER_LOGIN_ENABLED=true 로 설정하세요."
+            )
+            return None
+        
         if not self.driver:
             self._init_driver()
         
@@ -289,6 +306,14 @@ class BlogPoster:
             포스팅 성공 개수
         """
         logger.info("대기 중인 콘텐츠 포스팅 시작")
+        
+        if not NAVER_LOGIN_ENABLED:
+            logger.warning(
+                "네이버 자동 로그인/발행이 비활성화되어 있습니다. "
+                "실제 발행은 검토 후 수동 승인이 원칙입니다. "
+                "활성화하려면 환경 변수 NAVER_LOGIN_ENABLED=true 로 설정하세요."
+            )
+            return 0
         
         try:
             # TODO: 데이터베이스에서 pending 상태의 콘텐츠 조회
