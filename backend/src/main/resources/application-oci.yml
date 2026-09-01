@@ -14,13 +14,23 @@ server:
   port: ${PORT:8080}
 
 app:
-  auth:
-    enabled: ${APP_AUTH_ENABLED:true}
-    api-key: ${APP_AUTH_API_KEY:}
   cors:
     allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:}
 
 office:
+  # 배포 기본값은 로그인 필수. 프런트(Vercel)와 도메인이 달라 쿠키는 SameSite=None; Secure 여야 한다.
+  auth:
+    enabled: ${OFFICE_AUTH_ENABLED:true}
+    allowed-emails: ${OFFICE_AUTH_ALLOWED_EMAILS:}
+    redirect-uri: ${OFFICE_AUTH_REDIRECT_URI:}
+    success-redirect: ${OFFICE_AUTH_SUCCESS_REDIRECT:}
+    cookie-secure: ${OFFICE_AUTH_COOKIE_SECURE:true}
+    cookie-same-site: ${OFFICE_AUTH_COOKIE_SAME_SITE:None}
+  slack:
+    client-id: ${OFFICE_SLACK_CLIENT_ID:}
+    client-secret: ${OFFICE_SLACK_CLIENT_SECRET:}
+    redirect-uri: ${OFFICE_SLACK_REDIRECT_URI:}
+    review-base-url: ${OFFICE_SLACK_REVIEW_BASE_URL:}
   automation:
     execution-enabled: ${OFFICE_AUTOMATION_EXECUTION_ENABLED:true}
     worker-url: ${OFFICE_AUTOMATION_WORKER_URL:}

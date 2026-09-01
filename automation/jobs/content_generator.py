@@ -14,6 +14,7 @@ from config.settings import (
     MAX_KEYWORDS_PER_DAY
 )
 from automation.shared.logger import logger
+from automation.shared.usage import UsageTracker
 from automation.shared.postgres_database import Database
 
 
@@ -25,6 +26,8 @@ class ContentGenerator:
         self.db = Database()
         self.client = OpenAI(api_key=OPENAI_API_KEY, base_url=OPENAI_BASE_URL or None) if OPENAI_API_KEY else None
         self.model = OPENAI_MODEL
+        # 이번 실행의 토큰 사용량. main 이 마지막에 한 줄로 찍어 백오피스에 넘긴다.
+        self.usage = UsageTracker(self.model)
     
     def generate_title(self, keyword: str) -> str:
         """
@@ -53,7 +56,7 @@ class ContentGenerator:
 
 제목만 출력해주세요 (따옴표 없이):
 """
-            response = self.client.chat.completions.create(
+            response = self.usage.add(self.client.chat.completions.create(
                 model=self.model,
                 messages=[
                     {"role": "system", "content": "당신은 SEO 전문가입니다."},
@@ -61,7 +64,7 @@ class ContentGenerator:
                 ],
                 max_tokens=50,
                 temperature=0.7
-            )
+            ))
             
             title = response.choices[0].message.content.strip().strip('"').strip("'")
             logger.debug(f"제목 생성 완료: {title}")
@@ -102,7 +105,7 @@ class ContentGenerator:
 
 본문 내용:
 """
-            response = self.client.chat.completions.create(
+            response = self.usage.add(self.client.chat.completions.create(
                 model=self.model,
                 messages=[
                     {"role": "system", "content": "당신은 전문 블로그 작가입니다."},
@@ -110,7 +113,7 @@ class ContentGenerator:
                 ],
                 max_tokens=2000,
                 temperature=0.8
-            )
+            ))
             
             content = response.choices[0].message.content.strip()
             logger.debug(f"본문 생성 완료: {len(content)}자")
@@ -148,7 +151,7 @@ class ContentGenerator:
 
 태그:
 """
-            response = self.client.chat.completions.create(
+            response = self.usage.add(self.client.chat.completions.create(
                 model=self.model,
                 messages=[
                     {"role": "system", "content": "당신은 SEO 전문가입니다."},
@@ -156,7 +159,7 @@ class ContentGenerator:
                 ],
                 max_tokens=50,
                 temperature=0.5
-            )
+            ))
             
             tags_text = response.choices[0].message.content.strip()
             tags = [tag.strip() for tag in tags_text.split(',') if tag.strip()]
