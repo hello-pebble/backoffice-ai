@@ -24,6 +24,9 @@ office.toss.watchlist=005930,000660,373220
 office.gmail.enabled=false
 office.gmail.redirect-uri=http://127.0.0.1:8765/api/gmail/callback
 office.gmail.credentials-path=data/office-dashboard/gmail-credentials.json
+# 화면에 띄울 "확인할 메일"의 기준. Gmail 검색 문법을 그대로 씁니다.
+# in:inbox 라서 스팸·휴지통은 처음부터 빠집니다. 필요하면 -category:updates 도 추가하세요.
+#office.gmail.query=in:inbox is:unread -category:promotions -category:social
 office.gmail.token-path=data/office-dashboard/gmail-token
 
 # Python 자동화의 실행 위치입니다. 자동화는 Kotlin이 호출할 때만 실행됩니다.

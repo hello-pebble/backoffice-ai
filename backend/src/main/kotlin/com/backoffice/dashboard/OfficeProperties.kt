@@ -26,6 +26,9 @@ data class OfficeProperties(
         val credentialsPath: String = "data/office-dashboard/gmail-credentials.json",
         // 배포용. 클라이언트 JSON 원문을 그대로 넣는다. 값이 있으면 credentialsPath보다 우선한다.
         val credentialsJson: String = "",
+        // 화면에 띄울 "확인할 메일"의 기준. Gmail 검색 문법을 그대로 쓴다.
+        // in:inbox 라서 스팸·휴지통은 처음부터 빠지고, 홍보·소셜 카테고리도 제외한다.
+        val query: String = "in:inbox is:unread -category:promotions -category:social",
     )
     data class Automation(
         val pythonExecutable: String = "venv/Scripts/python.exe",

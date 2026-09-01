@@ -9,3 +9,4 @@
 #login-gate{position:fixed;inset:0;background:var(--paper);display:flex;align-items:center;justify-content:center;z-index:10}#login-gate[hidden]{display:none}.login-card{background:var(--card);border:1px solid var(--line);border-radius:13px;padding:40px;width:min(380px,92vw);text-align:center}.login-card .brand{color:var(--ink);margin-bottom:24px}.login-card h1{font-size:24px;margin:0 0 10px}.login-card p{font-size:13px;color:var(--muted);margin:0 0 24px}.login-card button{width:100%}.profile button{margin-top:12px;width:100%;padding:8px;font-size:12px}
 /* Slack 연결 상태 */
 .slack-status{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:18px;font-size:13px}.slack-status select{border:1px solid var(--line);border-radius:7px;padding:8px;font:inherit}.slack-status b{font-size:14px}
+.mail-count{font-size:15px;color:var(--accent);white-space:nowrap}

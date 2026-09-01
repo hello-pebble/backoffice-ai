@@ -15,7 +15,8 @@ function renderOperations(data){
 }
 function renderDashboard(d){
  const g=d.gmail,s=d.stocks;
- $('mail-list').innerHTML=g.connected&&g.messages.length?g.messages.map(x=>row(esc(x.subject),esc(x.from),`<span>${esc(x.date)}</span>`)).join(''):(g.message||'Gmail 연결 후 표시됩니다.');
+ $('mail-count').textContent=g.connected?`확인할 메일 ${g.unread||0}건${g.more?'+':''}`:'';
+ $('mail-list').innerHTML=g.connected?(g.messages.length?g.messages.map(x=>row(esc(x.subject),esc(x.from),`<span>${esc(x.date)}</span>`)).join(''):'확인할 메일이 없습니다.'):(g.message||'Gmail 연결 후 표시됩니다.');
  $('stock-list').innerHTML=s.connected&&s.items.length?s.items.map(x=>row(esc(x.name),esc(x.symbol),`<b>${won(Number(x.price))}</b>`)).join(''):(s.message||'토스증권 API 연결 후 표시됩니다.');
 }
 const NEWS_PER_PAGE=5;let newsItems=[],newsPage=0;

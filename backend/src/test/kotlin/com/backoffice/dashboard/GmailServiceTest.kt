@@ -58,4 +58,15 @@ class GmailServiceTest {
         assertFalse(overview.connected)
         assertEquals("Gmail 연동이 비활성화되어 있습니다.", overview.message)
     }
+
+    @Test
+    fun `기본 조회 기준은 스팸과 홍보 소셜을 뺀 안 읽은 메일이다`() {
+        val query = OfficeProperties.Gmail().query
+
+        // in:inbox 라서 스팸·휴지통이 처음부터 빠진다. 이 조건이 사라지면 스팸이 "확인할 메일"에 섞인다.
+        assertTrue(query.contains("in:inbox"), "실제 기준: $query")
+        assertTrue(query.contains("is:unread"), "실제 기준: $query")
+        assertTrue(query.contains("-category:promotions"), "실제 기준: $query")
+        assertTrue(query.contains("-category:social"), "실제 기준: $query")
+    }
 }

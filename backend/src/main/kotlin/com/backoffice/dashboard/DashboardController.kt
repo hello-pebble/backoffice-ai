@@ -241,7 +241,7 @@ class DashboardController(
 
 data class SelectSlackChannelRequest(val channelId: String = "")
 data class DashboardResponse(val generatedAt: String, val gmail: GmailOverview, val stocks: StockOverview)
-data class GmailOverview(val connected: Boolean, val message: String? = null, val unread: Int? = null, val messages: List<MailItem> = emptyList())
+data class GmailOverview(val connected: Boolean, val message: String? = null, val unread: Int? = null, val messages: List<MailItem> = emptyList(), val more: Boolean = false)
 data class MailItem(val from: String, val subject: String, val date: String)
 data class StockOverview(val connected: Boolean, val message: String? = null, val items: List<StockItem> = emptyList())
 data class StockItem(val symbol: String, val name: String, val price: String, val currency: String, val timestamp: String?)
