@@ -54,8 +54,18 @@ class AiOperationsService(private val objectMapper: ObjectMapper, private val do
             totalTokens = todayItems.sumOf { it.inputTokens + it.outputTokens },
             estimatedCostUsd = todayItems.sumOf { it.estimatedCostUsd },
             successfulRuns = todayItems.count { it.status == "성공" },
+            totalDurationMs = todayItems.sumOf { it.durationMs },
+            models = todayItems.filter { it.model !in NON_MODEL_LABELS }
+                .groupingBy { it.model }.eachCount()
+                .map { (model, runs) -> ModelUsage(model, runs) }
+                .sortedByDescending { it.runs },
             items = items.take(20),
         )
+    }
+
+    companion object {
+        // 모델을 쓰지 않는 실행(수집·템플릿)까지 모델 목록에 넣으면 무엇을 썼는지 흐려진다.
+        private val NON_MODEL_LABELS = setOf("모델 사용 안 함", "초안 템플릿")
     }
 
     private fun load(): List<AiOperationRun> = documents.readList("ai-operations", AiOperationRun::class.java)
@@ -83,5 +93,9 @@ data class AiOperationsOverview(
     val totalTokens: Long,
     val estimatedCostUsd: Double,
     val successfulRuns: Int,
+    val totalDurationMs: Long,
+    val models: List<ModelUsage>,
     val items: List<AiOperationRun>,
 )
+
+data class ModelUsage(val model: String, val runs: Int)

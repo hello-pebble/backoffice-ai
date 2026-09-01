@@ -6,6 +6,7 @@ from typing import Any
 
 from openai import OpenAI
 
+from automation.shared.usage import UsageTracker
 from config.settings import INSTAGRAM_TOON_MODEL, INSTAGRAM_TOONS_DIR, OPENAI_API_KEY, OPENAI_BASE_URL
 
 
@@ -14,6 +15,7 @@ class InstagramToonGenerator:
 
     def __init__(self) -> None:
         self.client = OpenAI(api_key=OPENAI_API_KEY, base_url=OPENAI_BASE_URL or None) if OPENAI_API_KEY else None
+        self.usage = UsageTracker(INSTAGRAM_TOON_MODEL)
 
     def generate(self, episode: str, tone: str, panel_count: int, toon_id: str) -> dict[str, Any]:
         if not self.client:
@@ -45,7 +47,7 @@ class InstagramToonGenerator:
 - 대사는 짧고 읽기 쉽게 작성합니다.
 - hashtags는 8~12개입니다.
 """
-        response = self.client.chat.completions.create(
+        response = self.usage.add(self.client.chat.completions.create(
             model=INSTAGRAM_TOON_MODEL,
             messages=[
                 {"role": "system", "content": "당신은 인스타그램 웹툰 전문 작가이자 스토리보드 작가입니다."},
@@ -53,7 +55,7 @@ class InstagramToonGenerator:
             ],
             response_format={"type": "json_object"},
             temperature=0.8,
-        )
+        ))
         raw = response.choices[0].message.content
         if not raw:
             raise RuntimeError("모델이 대본을 반환하지 않았습니다.")
@@ -72,6 +74,8 @@ class InstagramToonGenerator:
             "hashtags": result.get("hashtags", []),
             "panels": panels,
             "created_at": datetime.now().isoformat(),
+            "model": INSTAGRAM_TOON_MODEL,
+            "usage": self.usage.as_dict(),
         }
         self.save(toon)
         return toon
