@@ -6,6 +6,7 @@ import org.mockito.Mockito.mock
 import org.mockito.Mockito.`when`
 import org.springframework.http.HttpStatus
 import org.springframework.jdbc.core.JdbcTemplate
+import org.springframework.mock.web.MockHttpServletRequest
 import org.springframework.web.server.ResponseStatusException
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -139,5 +140,24 @@ class DashboardControllerTest {
 
         doThrow(IllegalStateException("Slack 채널 목록을 가져오지 못했습니다: invalid_auth")).`when`(slack).channels()
         assertEquals(HttpStatus.BAD_GATEWAY, status { controller.slackChannels() })
+    }
+
+    @Test
+    fun `로그아웃하면 세션 쿠키와 표시용 쿠키를 함께 지운다`() {
+        val cookies = controller.logout(MockHttpServletRequest()).headers[org.springframework.http.HttpHeaders.SET_COOKIE].orEmpty()
+
+        // 표시용 쿠키가 남으면 화면이 로그인된 줄 알고 대시보드를 그린 뒤 401 로 튕긴다.
+        assertEquals(2, cookies.size, "실제 쿠키: $cookies")
+        assertTrue(cookies.any { it.startsWith("${SessionAuthFilter.COOKIE}=;") }, "세션 쿠키 삭제 없음: $cookies")
+        assertTrue(cookies.any { it.startsWith("${SessionAuthFilter.HINT_COOKIE}=;") }, "표시용 쿠키 삭제 없음: $cookies")
+        assertTrue(cookies.all { it.contains("Max-Age=0") }, "만료 설정 없음: $cookies")
+    }
+
+    @Test
+    fun `표시용 쿠키는 화면이 읽어야 하므로 HttpOnly 가 아니다`() {
+        val cookies = controller.logout(MockHttpServletRequest()).headers[org.springframework.http.HttpHeaders.SET_COOKIE].orEmpty()
+
+        assertTrue(cookies.first { it.startsWith(SessionAuthFilter.COOKIE + "=") }.contains("HttpOnly"))
+        assertEquals(false, cookies.first { it.startsWith(SessionAuthFilter.HINT_COOKIE + "=") }.contains("HttpOnly"))
     }
 }

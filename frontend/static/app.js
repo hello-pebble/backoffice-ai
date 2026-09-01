@@ -4,9 +4,13 @@ window.fetch=(u,o={})=>_fetch(u,String(u).startsWith('/api/')?{...o,credentials:
  if(r.status===401&&!String(u).includes('/api/auth/'))showLogin();
  return r;
 });
-// 게이트는 기본으로 덮여 있다. 세션이 확인되기 전에 대시보드가 잠깐이라도 보이면 안 된다.
-function showLogin(message){const gate=document.getElementById('login-gate');if(!gate)return;gate.hidden=false;document.getElementById('login-button').hidden=false;document.getElementById('login-message').textContent=message||'허용된 Google 계정으로 로그인하세요.'}
+// 게이트는 HTML 에서 기본으로 덮여 있다(스크립트가 죽어도 대시보드가 새지 않도록).
+// 세션 쿠키는 HttpOnly 라 읽을 수 없어서, 로그인 때 함께 받는 표시용 쿠키로 즉시 판단한다.
+// 이게 없으면 /api/auth/me 왕복 동안 새로고침마다 로그인 카드가 깜빡인다.
+function showLogin(message){const gate=document.getElementById('login-gate');if(!gate)return;gate.hidden=false;document.getElementById('login-message').textContent=message||'허용된 Google 계정으로 로그인하세요.'}
 function hideLogin(){const gate=document.getElementById('login-gate');if(gate)gate.hidden=true}
+// 첫 페인트 전에 동기로 실행된다. 표시용일 뿐이라 위조해도 서버는 세션 쿠키만 본다.
+if(document.cookie.split('; ').includes('office_session_hint=1'))hideLogin();
 const $=id=>document.getElementById(id), won=n=>new Intl.NumberFormat('ko-KR',{style:'currency',currency:'KRW',maximumFractionDigits:0}).format(n||0);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function row(left,sub,right){return `<div class="row"><div><b>${left}</b><span>${sub}</span></div><div class="right">${right}</div></div>`}
