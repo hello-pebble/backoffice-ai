@@ -8,7 +8,8 @@ office.auth.enabled=false
 office.auth.allowed-emails=
 office.auth.redirect-uri=http://127.0.0.1:8765/api/auth/callback
 office.auth.success-redirect=http://127.0.0.1:8765/
-# 프런트가 다른 도메인(Vercel)에 있으면 secure=true, same-site=None 이어야 쿠키가 붙습니다.
+# 배포에서는 secure=true 입니다. 프런트가 /api 를 프록시하면(현재 Vercel rewrite) same-site=Lax 로 충분하고,
+# 프런트가 API 를 다른 도메인으로 직접 부르면 same-site=None 이어야 쿠키가 붙습니다.
 office.auth.cookie-secure=false
 office.auth.cookie-same-site=Lax
 app.cors.allowed-origins=http://127.0.0.1:8765
