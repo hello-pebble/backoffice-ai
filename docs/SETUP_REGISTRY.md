@@ -13,7 +13,14 @@
 
 ---
 
-## 1. Railway — 백엔드 환경변수
+## 1. Railway — 환경변수
+
+> **한 번에 넣기**: `config/railway-backend.env.example` · `config/railway-worker.env.example` 을
+> 각각 복사해 값을 채운 뒤, Railway 서비스의 **Variables → Raw Editor** 에 통째로 붙여 넣으면 됩니다.
+> 복사본(`config/railway-*.env`)은 gitignore 대상이라 커밋되지 않습니다.
+> 아래 표는 각 값의 의미와 실패 시 동작을 설명합니다.
+
+### 백엔드 서비스
 
 `SPRING_PROFILES_ACTIVE=oci` 기준입니다. (프로파일 이름이 `oci`지만 실제 배포처는 Railway입니다. 이름 변경은 Railway 변수도 함께 바꿔야 해서 미뤄 두었습니다.)
 
