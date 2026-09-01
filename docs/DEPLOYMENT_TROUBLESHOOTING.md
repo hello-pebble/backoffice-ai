@@ -135,51 +135,58 @@ SPRING_FLYWAY_BASELINE_VERSION=0
 5. `https://생성된-도메인/api/health`에 접속해 정상 응답을 확인합니다.
 6. 이후 Vercel 프런트엔드의 API 경로를 Railway 도메인으로 연결하고 Task 생성·상태 변경·삭제를 확인합니다.
 
-## 5. APP_AUTH_API_KEY가 비어 있어 앱이 시작되지 않는 오류
+## 5. 로그인해도 대시보드가 열리지 않는 문제 (Google OAuth)
 
 ### 문제 상황
 
-배포 후 컨테이너가 기동 직후 종료되고 로그에 아래 메시지가 남습니다.
-
-```text
-app.auth.enabled=true 이지만 app.auth.api-key 가 비어 있습니다.
-```
-
-### 원인
-
-`ApiKeyAuthFilter`는 생성 시점에 인증이 켜져 있는데 키가 비어 있으면 곧바로 실패하도록 만들었습니다. 키 없이 인증만 켜진 상태로 공개 배포되는 것을 막기 위한 의도된 동작입니다. `application-oci.yml`에서 `APP_AUTH_ENABLED` 기본값이 `true`이므로, 배포 환경에서 키를 넣지 않으면 반드시 이 오류가 납니다.
-
-### 해결 방법
-
-Railway Variables(또는 `deploy/oci.env`)에 충분히 긴 임의 문자열을 `APP_AUTH_API_KEY`로 저장합니다. 로컬에서만 확인할 때는 `APP_AUTH_ENABLED=false`로 두면 됩니다.
-
-### 재발 방지
-
-- 새 배포 환경을 만들 때 `APP_AUTH_API_KEY`를 먼저 등록합니다.
-- 키는 문서·Git·채팅에 남기지 않습니다.
-
-## 6. 인증을 켠 뒤 프런트엔드가 401을 받는 문제
-
-### 문제 상황
-
-`APP_AUTH_ENABLED=true`로 바꾼 뒤 대시보드 화면이 비고, 응답이 아래와 같습니다.
+로그인 버튼을 눌러 Google 동의까지 마쳤는데 다시 로그인 화면으로 돌아오거나, 아래 응답이 계속 뜹니다.
 
 ```json
-{"detail":"인증에 실패했습니다."}
+{"detail":"로그인이 필요합니다."}
 ```
 
 ### 원인
 
-`/api/`로 시작하는 요청은 `X-API-Key` 헤더가 서버 키와 일치해야 통과합니다. 현재 `frontend/static/app.js`에는 API 키를 저장하거나 헤더에 실어 보내는 코드가 없습니다. 즉 인증을 켜면 프런트엔드는 예외 경로(`/api/health`, `/api/gmail/callback`)를 제외한 모든 호출에서 401을 받습니다.
+인증은 공유 API 키에서 **Google 로그인 세션 쿠키**로 바뀌었습니다(`SessionAuthFilter`). 자주 걸리는 원인은 셋입니다.
+
+1. `OFFICE_AUTH_ALLOWED_EMAILS`가 비어 있음 — 닫힌 기본값이라 **아무도** 로그인할 수 없습니다.
+2. `OFFICE_AUTH_REDIRECT_URI`가 Google Cloud 콘솔에 등록한 값과 다름 — 콘솔의 승인된 리디렉션 URI에 `https://<api-도메인>/api/auth/callback`을 추가해야 합니다. Gmail 연동용 주소와는 별개입니다.
+3. 프런트(Vercel)와 API 도메인이 달라 쿠키가 붙지 않음 — 교차 도메인에서는 `OFFICE_AUTH_COOKIE_SECURE=true`, `OFFICE_AUTH_COOKIE_SAME_SITE=None`이어야 하고, `APP_CORS_ALLOWED_ORIGINS`에 프런트 도메인이 있어야 합니다.
 
 ### 해결 방법
 
-- 임시 확인용: `APP_AUTH_ENABLED=false`로 되돌립니다.
-- 정상 해결: 프런트엔드가 `X-API-Key` 헤더를 보내도록 수정합니다. `/api/health`는 인증 없이 열려 있으므로, 헬스 체크가 정상인데 나머지가 401이면 이 문제입니다.
+- 로그인 자체가 거부되면(허용 계정 아님) 응답 화면에 그 이메일이 표시됩니다. `OFFICE_AUTH_ALLOWED_EMAILS`에 추가합니다.
+- 로그인은 되는데 새로고침하면 풀리면 쿠키 문제입니다. 브라우저 개발자 도구에서 `office_session` 쿠키가 저장됐는지 확인합니다.
+- 로컬에서만 확인할 때는 `OFFICE_AUTH_ENABLED=false`로 두면 인증 없이 열립니다.
 
 ### 재발 방지
 
-- 인증을 켜는 배포와 프런트엔드 키 설정은 같은 시점에 반영합니다.
+- 새 배포 도메인을 만들면 Google 콘솔 리디렉션 URI와 `OFFICE_AUTH_SUCCESS_REDIRECT`를 같은 시점에 갱신합니다.
+- 세션은 `app_document`의 `auth-sessions`에 **해시로만** 저장됩니다. 값이 새어도 그 값으로는 로그인할 수 없습니다.
+
+## 6. Slack 알림이 오지 않는 문제
+
+### 문제 상황
+
+주제 대본 초안은 만들어지는데 Slack 알림 상태가 `NOT_CONFIGURED` 또는 `FAILED`로 남습니다.
+
+### 원인
+
+- `NOT_CONFIGURED`: Slack 앱이 아직 설치되지 않았거나, 설치는 됐는데 **알림 채널을 고르지 않은** 상태입니다.
+- `FAILED`: Slack API가 HTTP 200과 함께 `{"ok":false,"error":"..."}`를 준 경우입니다. 초안 목록에 `channel_not_found`, `not_in_channel` 같은 사유가 그대로 표시됩니다.
+
+두 경우 모두 **초안 생성·저장은 성공합니다.** 알림 실패가 작업을 막지 않습니다.
+
+### 해결 방법
+
+1. 대시보드의 "Slack 연결" 섹션에서 앱을 설치합니다(`OFFICE_SLACK_CLIENT_ID`/`CLIENT_SECRET` 필요).
+2. "채널 목록 새로고침" 후 알림 채널을 고릅니다.
+3. 이미 만들어진 초안은 "Slack 알림 재시도" 버튼으로 다시 보냅니다.
+
+### 재발 방지
+
+- Slack 앱 스코프는 `chat:write`, `chat:write.public`, `channels:read`, `groups:read`가 필요합니다. 스코프를 바꾸면 앱을 다시 설치해야 합니다.
+- 비공개 채널은 봇을 채널에 초대해야 목록에 보입니다.
 
 ## 7. 헬스 체크가 503을 반환
 
