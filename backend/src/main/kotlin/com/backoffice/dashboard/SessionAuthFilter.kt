@@ -47,6 +47,9 @@ class SessionAuthFilter(
     companion object {
         const val COOKIE = "office_session"
 
+        /** 화면이 로그인 여부를 즉시 알기 위한 표시용 쿠키. 인증 판단에는 쓰지 않는다. */
+        const val HINT_COOKIE = "office_session_hint"
+
         fun sessionToken(request: HttpServletRequest): String? =
             request.cookies?.firstOrNull { it.name == COOKIE }?.value
     }

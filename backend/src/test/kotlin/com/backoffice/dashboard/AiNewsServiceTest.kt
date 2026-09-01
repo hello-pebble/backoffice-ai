@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.sun.net.httpserver.HttpServer
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
+import org.mockito.Mockito.mock
 import java.net.InetSocketAddress
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -12,7 +13,7 @@ import kotlin.test.assertTrue
 class AiNewsServiceTest {
     private val server: HttpServer = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0)
     private val documents = FakeDocumentStore()
-    private val operations = AiOperationsService(ObjectMapper(), documents)
+    private val operations = AiOperationsService(ObjectMapper(), documents, RecordingSlackService(), OfficeProperties())
 
     @AfterEach fun stop() = server.stop(0)
 

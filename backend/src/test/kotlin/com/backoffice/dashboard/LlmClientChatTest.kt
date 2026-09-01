@@ -27,9 +27,9 @@ class LlmClientChatTest {
         server.start()
     }
 
-    private fun properties(prices: Map<String, String> = emptyMap()) = OfficeProperties(
+    private fun properties(prices: Map<String, String> = emptyMap(), timeoutSeconds: Long = 120) = OfficeProperties(
         aiNews = OfficeProperties.AiNews(summaryProvider = "openai", openAiApiKey = "test-key", openAiBaseUrl = "http://127.0.0.1:${server.address.port}/v1", summaryModel = "test-model"),
-        llm = OfficeProperties.Llm(maxAttempts = 3, retryDelayMillis = 1, prices = prices),
+        llm = OfficeProperties.Llm(requestTimeoutSeconds = timeoutSeconds, maxAttempts = 3, retryDelayMillis = 1, prices = prices),
     )
 
     private fun okBody(inputTokens: Int, outputTokens: Int) =
@@ -67,5 +67,25 @@ class LlmClientChatTest {
         // 표에 없는 모델은 기존 기본 단가(0.20 / 1.20)로 떨어진다.
         val fallback = LlmClient(properties(mapOf("다른-모델" to "2.0,8.0")), ObjectMapper()).chat("s", "u")
         assertEquals(1.4, fallback.costUsd, 0.0001)
+    }
+
+    @Test
+    fun `응답이 늦으면 재시도하지 않고 바로 올린다`() {
+        // 타임아웃은 이미 제한 시간을 다 쓴 요청이다. 세 번 반복하면 대기만 3배가 되고
+        // 그 사이 브라우저는 끊긴다. 실제로 120초 × 3회 = 6분을 매달린 실행이 있었다.
+        server.createContext("/") { exchange ->
+            calls.incrementAndGet()
+            Thread.sleep(2_000)
+            exchange.sendResponseHeaders(200, 0)
+            exchange.responseBody.close()
+        }
+        server.start()
+
+        val error = assertFailsWith<IllegalStateException> {
+            LlmClient(properties(timeoutSeconds = 1), ObjectMapper()).chat("s", "u")
+        }
+
+        assertEquals(1, calls.get(), "타임아웃을 재시도하면 대기가 배로 늘어난다")
+        assertTrue(error.message!!.contains("1초 안에 응답하지 않았습니다"), "실제 메시지: ${error.message}")
     }
 }
