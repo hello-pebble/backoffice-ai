@@ -15,7 +15,7 @@ from config.settings import (
 )
 from automation.shared.logger import logger
 from automation.shared.usage import UsageTracker
-from automation.shared.postgres_database import Database
+from automation.shared.backend_client import Database
 
 
 class ContentGenerator:

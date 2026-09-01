@@ -74,9 +74,25 @@
 > Kotlin과 Python이 OpenAI 키를 **따로** 읽습니다.
 > 백엔드는 `OFFICE_AI_NEWS_OPEN_AI_API_KEY`, 워커는 `OPENAI_API_KEY`. 양쪽 다 필요합니다.
 
+### 워커 → 백엔드 저장 (워커 서비스에도 등록)
+
+워커는 DB에 직접 쓰지 않고 백엔드의 워커 전용 API로 결과를 넘깁니다.
+
+| 서비스 | 변수 | 값 |
+|---|---|---|
+| 백엔드 | `OFFICE_AUTOMATION_WORKER_API_KEY` | 긴 랜덤 문자열 |
+| 워커 | `WORKER_API_KEY` | **위와 같은 값** |
+| 워커 | `BACKEND_API_URL` | `https://backoffice-ai-production.up.railway.app` |
+
+> 두 값이 다르면 백엔드가 401로 막고 **자동화 결과가 조용히 사라집니다.**
+> 백엔드 쪽 키가 비어 있으면 워커 경로는 전부 거부됩니다(설정 누락 시 무인증으로 열리지 않도록).
+> `BACKEND_API_URL`은 Railway 내부 주소를 써도 됩니다. Vercel을 거칠 필요가 없습니다.
+
 ### 더 이상 쓰지 않음 (지워도 됨)
 
 `APP_AUTH_ENABLED` · `APP_AUTH_API_KEY` — Google 로그인으로 대체됐습니다.
+
+워커 서비스의 `SUPABASE_PG_DSN` · `SUPABASE_DB_USER` · `SUPABASE_DB_PASSWORD`도 더 이상 필요 없습니다(백엔드를 통해 저장). 백엔드 쪽 DB 변수는 그대로 둡니다.
 
 ---
 

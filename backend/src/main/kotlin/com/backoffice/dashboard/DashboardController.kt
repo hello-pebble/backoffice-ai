@@ -33,6 +33,7 @@ class DashboardController(
     private val authService: AuthService,
     private val slackService: SlackService,
     private val properties: OfficeProperties,
+    private val automationRepository: AutomationRepository,
     private val jdbc: JdbcTemplate,
 ) {
     @GetMapping("/dashboard")
@@ -142,6 +143,34 @@ class DashboardController(
     @PostMapping("/topic-drafts/{id}/notify")
     fun notifyTopicDraft(@PathVariable id: String): TopicDraft = try {
         topicDraftService.notify(id)
+    } catch (error: IllegalArgumentException) {
+        throw ResponseStatusException(HttpStatus.BAD_REQUEST, error.message)
+    }
+
+    // 워커(Python)가 DB 에 직접 쓰지 않고 결과만 넘긴다. 스키마를 아는 곳은 백엔드 하나다.
+    @PostMapping("/worker/keywords")
+    fun saveWorkerKeyword(@RequestBody request: SaveKeywordRequest): Map<String, Long> = try {
+        mapOf("id" to automationRepository.saveKeyword(request))
+    } catch (error: IllegalArgumentException) {
+        throw ResponseStatusException(HttpStatus.BAD_REQUEST, error.message)
+    }
+
+    @GetMapping("/worker/keywords/unused")
+    fun unusedWorkerKeywords(limit: Int?): List<AutomationKeyword> =
+        automationRepository.unusedKeywords((limit ?: 10).coerceIn(1, 100))
+
+    @PostMapping("/worker/contents")
+    fun saveWorkerContent(@RequestBody request: SaveContentRequest): Map<String, Boolean> = try {
+        automationRepository.saveContent(request)
+        mapOf("ok" to true)
+    } catch (error: IllegalArgumentException) {
+        throw ResponseStatusException(HttpStatus.BAD_REQUEST, error.message)
+    }
+
+    @PostMapping("/worker/posting-records")
+    fun saveWorkerPostingRecord(@RequestBody request: SavePostingRecordRequest): Map<String, Boolean> = try {
+        automationRepository.savePostingRecord(request)
+        mapOf("ok" to true)
     } catch (error: IllegalArgumentException) {
         throw ResponseStatusException(HttpStatus.BAD_REQUEST, error.message)
     }

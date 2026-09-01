@@ -36,6 +36,10 @@ INSTAGRAM_TOONS_DIR = DATA_DIR / 'instagram-toons'
 LOGS_DIR = DATA_DIR / 'logs'
 
 # 데이터베이스 설정
+# 워커는 DB 에 직접 쓰지 않고 백엔드의 워커 전용 API 로 결과를 넘긴다.
+BACKEND_API_URL = os.getenv('BACKEND_API_URL', '')
+WORKER_API_KEY = os.getenv('WORKER_API_KEY', '')
+
 SUPABASE_PG_DSN = os.getenv('SUPABASE_PG_DSN', os.getenv('SUPABASE_DB_URL', '').removeprefix('jdbc:'))
 SUPABASE_DB_USER = os.getenv('SUPABASE_DB_USER', '')
 SUPABASE_DB_PASSWORD = os.getenv('SUPABASE_DB_PASSWORD', '')
