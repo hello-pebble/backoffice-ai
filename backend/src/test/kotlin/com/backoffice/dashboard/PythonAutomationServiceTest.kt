@@ -41,7 +41,7 @@ class PythonAutomationServiceTest {
     @Test
     fun `워커가 돌려준 AI_USAGE 줄을 운영 센터에 기록하고 출력에서 지운다`() {
         val properties = OfficeProperties()
-        val operations = AiOperationsService(ObjectMapper(), FakeDocumentStore())
+        val operations = AiOperationsService(ObjectMapper(), FakeDocumentStore(), RecordingSlackService(), OfficeProperties())
         val service = PythonAutomationService(properties, 5, ObjectMapper(), operations, LlmClient(properties, ObjectMapper()))
         val output = listOf(
             "콘텐츠 생성 완료: 2개",
@@ -63,7 +63,7 @@ class PythonAutomationServiceTest {
     @Test
     fun `AI_USAGE 줄이 없으면 아무것도 기록하지 않는다`() {
         val properties = OfficeProperties()
-        val operations = AiOperationsService(ObjectMapper(), FakeDocumentStore())
+        val operations = AiOperationsService(ObjectMapper(), FakeDocumentStore(), RecordingSlackService(), OfficeProperties())
         val service = PythonAutomationService(properties, 5, ObjectMapper(), operations, LlmClient(properties, ObjectMapper()))
 
         val response = service.recordUsage("keyword", AutomationResponse(true, 0, "키워드 수집 완료: 5개"), 1_000)

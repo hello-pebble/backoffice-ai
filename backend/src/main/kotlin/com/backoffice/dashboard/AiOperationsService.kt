@@ -1,6 +1,7 @@
 package com.backoffice.dashboard
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import java.nio.file.Files
 import java.nio.file.Path
@@ -9,7 +10,13 @@ import java.time.OffsetDateTime
 import java.util.UUID
 
 @Service
-class AiOperationsService(private val objectMapper: ObjectMapper, private val documents: JsonDocumentStore) {
+class AiOperationsService(
+    private val objectMapper: ObjectMapper,
+    private val documents: JsonDocumentStore,
+    private val slack: SlackService,
+    private val properties: OfficeProperties,
+) {
+    private val log = LoggerFactory.getLogger(AiOperationsService::class.java)
     private val path = Path.of("data/ai-operations/runs.json")
 
     @Synchronized
@@ -42,6 +49,33 @@ class AiOperationsService(private val objectMapper: ObjectMapper, private val do
             error = error?.take(240),
         )
         save((listOf(item) + load()).take(100))
+        if (status != "성공") notifyFailure(item)
+    }
+
+    /**
+     * 실패는 모든 에이전트가 이 함수를 지나므로 여기 한 곳에서 알린다.
+     * 성공은 알리지 않는다. 화면에서 직접 누른 결과는 그 자리에서 보이고,
+     * 검토가 필요한 결과물(주제 대본 초안)은 만든 쪽이 따로 알린다.
+     *
+     * 알림 실패가 기록을 막으면 안 된다. 기록이 남아야 운영 센터에서라도 볼 수 있다.
+     */
+    private fun notifyFailure(run: AiOperationRun) {
+        val link = "${properties.slack.reviewBaseUrl.trim().trimEnd('/')}/#ai-operations"
+        val reason = run.error ?: "사유가 기록되지 않았습니다."
+        val (status, error) = runCatching {
+            slack.notify(
+            """
+            자동화 실패: ${run.agent}
+            ${run.provider} · ${run.model}
+            사유: $reason
+            운영 센터: $link
+            """.trimIndent()
+            )
+        }.getOrElse {
+            // 여기서 예외가 새면 원래 실패 사유가 Slack 오류로 덮인다. 기록은 이미 남았다.
+            "FAILED" to LlmClient.reasonOf(it)
+        }
+        if (status == "FAILED") log.warn("실패 알림을 보내지 못했습니다: {}", error)
     }
 
     @Synchronized

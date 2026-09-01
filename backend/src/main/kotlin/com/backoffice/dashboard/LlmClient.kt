@@ -70,6 +70,8 @@ class LlmClient(private val properties: OfficeProperties, private val objectMapp
     }
 
     // 429·5xx·연결 실패만 다시 시도한다. 4xx 는 다시 보내도 같은 답이라 바로 올린다.
+    // 타임아웃도 재시도하지 않는다. 이미 제한 시간을 다 쓴 요청이라 반복하면 대기만 3배가 되고,
+    // 그 사이 브라우저는 이미 끊긴다. 실제로 120초 × 3회 = 6분을 매달린 실행이 있었다.
     private fun send(request: HttpRequest): String {
         var attempt = 1
         while (true) {
@@ -79,6 +81,12 @@ class LlmClient(private val properties: OfficeProperties, private val objectMapp
                 val error = IllegalStateException("${response.statusCode()} 응답: ${response.body().take(300)}")
                 if (response.statusCode() != 429 && response.statusCode() < 500) throw error
                 error
+            } catch (error: java.net.http.HttpTimeoutException) {
+                throw IllegalStateException(
+                    "모델이 ${properties.llm.requestTimeoutSeconds}초 안에 응답하지 않았습니다. " +
+                        "더 빠른 모델을 쓰거나 office.llm.request-timeout-seconds 를 늘리세요.",
+                    error,
+                )
             } catch (error: java.io.IOException) {
                 error
             } catch (error: InterruptedException) {
