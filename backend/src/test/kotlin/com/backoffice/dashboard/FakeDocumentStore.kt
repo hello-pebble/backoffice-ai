@@ -14,4 +14,7 @@ internal class FakeDocumentStore : JsonDocumentStore(mock(JdbcTemplate::class.ja
 
     @Suppress("UNCHECKED_CAST")
     override fun <T> read(key: String, type: Class<T>): T? = saved[key] as T?
+
+    @Suppress("UNCHECKED_CAST")
+    override fun <T> readList(key: String, elementType: Class<T>): List<T> = saved[key] as? List<T> ?: emptyList()
 }

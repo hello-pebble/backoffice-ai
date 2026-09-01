@@ -16,7 +16,7 @@ class CorsConfiguration(
         registry.addMapping("/api/**")
             .allowedOrigins(*origins.toTypedArray())
             .allowedMethods("GET", "POST", "PATCH", "DELETE", "OPTIONS")
-            .allowedHeaders("Content-Type", "Authorization", "X-API-Key")
+            .allowedHeaders("Content-Type", "Authorization")
             .allowCredentials(true)
     }
 }
