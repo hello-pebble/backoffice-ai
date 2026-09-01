@@ -4,7 +4,9 @@ window.fetch=(u,o={})=>_fetch(u,String(u).startsWith('/api/')?{...o,credentials:
  if(r.status===401&&!String(u).includes('/api/auth/'))showLogin();
  return r;
 });
-function showLogin(message){const gate=document.getElementById('login-gate');if(!gate||!gate.hidden)return;gate.hidden=false;if(message)document.getElementById('login-message').textContent=message}
+// 게이트는 기본으로 덮여 있다. 세션이 확인되기 전에 대시보드가 잠깐이라도 보이면 안 된다.
+function showLogin(message){const gate=document.getElementById('login-gate');if(!gate)return;gate.hidden=false;document.getElementById('login-button').hidden=false;document.getElementById('login-message').textContent=message||'허용된 Google 계정으로 로그인하세요.'}
+function hideLogin(){const gate=document.getElementById('login-gate');if(gate)gate.hidden=true}
 const $=id=>document.getElementById(id), won=n=>new Intl.NumberFormat('ko-KR',{style:'currency',currency:'KRW',maximumFractionDigits:0}).format(n||0);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function row(left,sub,right){return `<div class="row"><div><b>${left}</b><span>${sub}</span></div><div class="right">${right}</div></div>`}
@@ -56,7 +58,7 @@ $('slack-connect').onclick=async()=>{const r=await fetch('/api/slack/connect');i
 $('slack-status').addEventListener('click',async e=>{if(!e.target.closest('#slack-channel-load'))return;const channels=await j('/api/slack/channels');if(!channels){alert('채널 목록을 가져오지 못했습니다. 봇 권한을 확인하세요.');return}SLACK_STATE.channels=channels;renderSlack(await j('/api/slack/status'))});
 $('slack-status').addEventListener('change',async e=>{if(e.target.id!=='slack-channel'||!e.target.value)return;const r=await fetch('/api/slack/channel',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({channelId:e.target.value})});if(!r.ok){const err=await r.json().catch(()=>({}));alert(err.detail||'채널을 저장하지 못했습니다.');return}renderSlack(await r.json())});
 // 세션이 없으면 대시보드 데이터를 부르지 않는다. 401 이 줄줄이 뜨는 걸 막는다.
-async function start(){const me=await fetch('/api/auth/me');if(!me.ok){showLogin();return}$('profile-email').textContent=(await me.json()).email;load()}
+async function start(){const me=await fetch('/api/auth/me').catch(()=>null);if(!me||!me.ok){showLogin();return}hideLogin();$('profile-email').textContent=(await me.json()).email;load()}
 start();
 
 
