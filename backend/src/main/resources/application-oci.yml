@@ -18,19 +18,24 @@ app:
     allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:}
 
 office:
-  # 배포 기본값은 로그인 필수. 프런트(Vercel)와 도메인이 달라 쿠키는 SameSite=None; Secure 여야 한다.
+  # 배포 기본값은 로그인 필수. allowed-emails 가 비면 아무도 들어올 수 없다.
+  #
+  # 프런트(Vercel)가 /api/* 를 Railway 로 rewrite 하므로 브라우저에는 vercel.app 한 도메인만 보인다.
+  # 따라서 쿠키는 교차 도메인이 아니라 SameSite=Lax 로 충분하다(None 보다 안전).
+  # 다만 리디렉션 주소는 반드시 Vercel 도메인이어야 한다. Railway 주소로 잡으면 쿠키가
+  # railway.app 에 저장되고, 이후 요청은 vercel.app 으로 가서 쿠키가 실리지 않아 로그인이 계속 풀린다.
   auth:
     enabled: ${OFFICE_AUTH_ENABLED:true}
     allowed-emails: ${OFFICE_AUTH_ALLOWED_EMAILS:}
-    redirect-uri: ${OFFICE_AUTH_REDIRECT_URI:}
-    success-redirect: ${OFFICE_AUTH_SUCCESS_REDIRECT:}
+    redirect-uri: ${OFFICE_AUTH_REDIRECT_URI:https://backoffice-ai-orpin.vercel.app/api/auth/callback}
+    success-redirect: ${OFFICE_AUTH_SUCCESS_REDIRECT:https://backoffice-ai-orpin.vercel.app/}
     cookie-secure: ${OFFICE_AUTH_COOKIE_SECURE:true}
-    cookie-same-site: ${OFFICE_AUTH_COOKIE_SAME_SITE:None}
+    cookie-same-site: ${OFFICE_AUTH_COOKIE_SAME_SITE:Lax}
   slack:
     client-id: ${OFFICE_SLACK_CLIENT_ID:}
     client-secret: ${OFFICE_SLACK_CLIENT_SECRET:}
-    redirect-uri: ${OFFICE_SLACK_REDIRECT_URI:}
-    review-base-url: ${OFFICE_SLACK_REVIEW_BASE_URL:}
+    redirect-uri: ${OFFICE_SLACK_REDIRECT_URI:https://backoffice-ai-orpin.vercel.app/api/slack/callback}
+    review-base-url: ${OFFICE_SLACK_REVIEW_BASE_URL:https://backoffice-ai-orpin.vercel.app}
   automation:
     execution-enabled: ${OFFICE_AUTOMATION_EXECUTION_ENABLED:true}
     worker-url: ${OFFICE_AUTOMATION_WORKER_URL:}

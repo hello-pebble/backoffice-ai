@@ -29,6 +29,8 @@ class SessionAuthFilter(
     override fun shouldNotFilter(request: HttpServletRequest): Boolean =
         !properties.auth.enabled ||
             !request.requestURI.startsWith("/api/") ||
+            // 워커 경로는 사람이 아니라 워커가 부른다. WorkerAuthFilter 가 전용 키로 지킨다.
+            request.requestURI.startsWith(WorkerAuthFilter.PREFIX) ||
             request.method.equals("OPTIONS", ignoreCase = true) ||
             request.requestURI in openPaths
 

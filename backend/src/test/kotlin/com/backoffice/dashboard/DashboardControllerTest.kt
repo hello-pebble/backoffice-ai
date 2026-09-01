@@ -39,6 +39,7 @@ class DashboardControllerTest {
         authService = mock(AuthService::class.java),
         slackService = slack,
         properties = OfficeProperties(),
+        automationRepository = mock(AutomationRepository::class.java),
         jdbc = jdbc,
     )
 
