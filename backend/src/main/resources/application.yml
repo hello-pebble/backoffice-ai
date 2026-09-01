@@ -16,9 +16,6 @@ server:
   port: ${PORT:8765}
 
 app:
-  auth:
-    enabled: ${APP_AUTH_ENABLED:false}
-    api-key: ${APP_AUTH_API_KEY:}
   cors:
     allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:}
 
@@ -31,6 +28,18 @@ office:
     enabled: ${OFFICE_GMAIL_ENABLED:false}
     redirect-uri: ${OFFICE_GMAIL_REDIRECT_URI:http://127.0.0.1:8765/api/gmail/callback}
     credentials-json: ${OFFICE_GMAIL_CREDENTIALS_JSON:}
+  auth:
+    enabled: ${OFFICE_AUTH_ENABLED:false}
+    allowed-emails: ${OFFICE_AUTH_ALLOWED_EMAILS:}
+    redirect-uri: ${OFFICE_AUTH_REDIRECT_URI:http://127.0.0.1:8765/api/auth/callback}
+    success-redirect: ${OFFICE_AUTH_SUCCESS_REDIRECT:http://127.0.0.1:8765/}
+    cookie-secure: ${OFFICE_AUTH_COOKIE_SECURE:false}
+    cookie-same-site: ${OFFICE_AUTH_COOKIE_SAME_SITE:Lax}
+  slack:
+    client-id: ${OFFICE_SLACK_CLIENT_ID:}
+    client-secret: ${OFFICE_SLACK_CLIENT_SECRET:}
+    redirect-uri: ${OFFICE_SLACK_REDIRECT_URI:http://127.0.0.1:8765/api/slack/callback}
+    review-base-url: ${OFFICE_SLACK_REVIEW_BASE_URL:http://127.0.0.1:8765}
   toss:
     enabled: ${OFFICE_TOSS_ENABLED:false}
     base-url: ${OFFICE_TOSS_BASE_URL:https://openapi.tossinvest.com}

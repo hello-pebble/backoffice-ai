@@ -3,8 +3,8 @@ package com.backoffice.dashboard
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
 
-class AiNewsBriefingUrlTest {
-    private fun url(base: String) = AiNewsBriefingService.chatCompletionsUrl(base)
+class LlmClientTest {
+    private fun url(base: String) = LlmClient.chatCompletionsUrl(base)
 
     @Test
     fun `버전 경로가 이미 있으면 그대로 이어 붙인다`() {
@@ -32,21 +32,21 @@ class AiNewsBriefingUrlTest {
 
     @Test
     fun `실패 기록에 쓸 이름은 호스트로, 주소가 깨지면 설정값 그대로 남긴다`() {
-        assertEquals("integrate.api.nvidia.com", AiNewsBriefingService.vendorOf(false, url("https://integrate.api.nvidia.com/v1")))
-        assertEquals("Ollama 로컬", AiNewsBriefingService.vendorOf(true, "http://127.0.0.1:11434/api/generate"))
+        assertEquals("integrate.api.nvidia.com", LlmClient.vendorOf(false, url("https://integrate.api.nvidia.com/v1")))
+        assertEquals("Ollama 로컬", LlmClient.vendorOf(true, "http://127.0.0.1:11434/api/generate"))
         // 값에 공백이 섞이는 실수. host 를 못 뽑아도 무엇을 넣었는지는 보여야 한다.
-        assertEquals("htt ps://x/v1", AiNewsBriefingService.vendorOf(false, "htt ps://x/v1"))
+        assertEquals("htt ps://x/v1", LlmClient.vendorOf(false, "htt ps://x/v1"))
     }
 
     @Test
     fun `우리가 던진 예외는 메시지만, 그 외에는 예외 종류까지 남긴다`() {
-        assertEquals("소식을 먼저 수집하세요.", AiNewsBriefingService.reasonOf(IllegalArgumentException("소식을 먼저 수집하세요.")))
-        assertEquals("401 응답: nope", AiNewsBriefingService.reasonOf(IllegalStateException("401 응답: nope")))
+        assertEquals("소식을 먼저 수집하세요.", LlmClient.reasonOf(IllegalArgumentException("소식을 먼저 수집하세요.")))
+        assertEquals("401 응답: nope", LlmClient.reasonOf(IllegalStateException("401 응답: nope")))
         // 연결 실패는 메시지가 주소뿐이라 종류가 없으면 무슨 일인지 알 수 없다.
         assertEquals(
             "ConnectException: integrate.api.nvidia.com",
-            AiNewsBriefingService.reasonOf(java.net.ConnectException("integrate.api.nvidia.com")),
+            LlmClient.reasonOf(java.net.ConnectException("integrate.api.nvidia.com")),
         )
-        assertEquals("RuntimeException: 상세 메시지 없음", AiNewsBriefingService.reasonOf(RuntimeException()))
+        assertEquals("RuntimeException: 상세 메시지 없음", LlmClient.reasonOf(RuntimeException()))
     }
 }

@@ -5,27 +5,24 @@
 
 ---
 
-## 0. 먼저 — 지금 배포하면 백엔드가 안 뜹니다
+## 0. 먼저 — 로그인 잠금 주의
 
-`app.auth.enabled`가 배포 프로파일에서 기본 `true`인데 `APP_AUTH_API_KEY`가 없으면
-앱이 의도적으로 기동을 중단합니다. **Railway에 아래 중 하나를 반드시 등록하세요.**
+인증이 공유 API 키에서 **Google 로그인**으로 바뀌었습니다. `APP_AUTH_ENABLED` · `APP_AUTH_API_KEY`는 더 이상 쓰이지 않으니 Railway에서 지워도 됩니다.
 
-| 선택 | Railway 변수 | 결과 |
-|---|---|---|
-| A (권장) | `APP_AUTH_API_KEY` = 긴 랜덤 문자열 | 인증 켜짐. 대시보드 첫 접속 시 키 입력창 |
-| B (임시) | `APP_AUTH_ENABLED` = `false` | 기동되지만 API가 무인증으로 열림 |
-
-키 생성:
-
-```
-python -c "import secrets; print(secrets.token_urlsafe(32))"
-```
+배포 프로파일은 `office.auth.enabled=true`가 기본입니다. **`OFFICE_AUTH_ALLOWED_EMAILS`가 비어 있으면 앱은 정상 기동하지만 아무도 로그인할 수 없습니다.** 헬스체크로는 잡히지 않으니 배포 전에 먼저 넣으세요.
 
 ---
 
-## 1. Railway — 백엔드 환경변수
+## 1. Railway — 환경변수
 
-`SPRING_PROFILES_ACTIVE=oci` 기준입니다.
+> **한 번에 넣기**: `config/railway-backend.env.example` · `config/railway-worker.env.example` 을
+> 각각 복사해 값을 채운 뒤, Railway 서비스의 **Variables → Raw Editor** 에 통째로 붙여 넣으면 됩니다.
+> 복사본(`config/railway-*.env`)은 gitignore 대상이라 커밋되지 않습니다.
+> 아래 표는 각 값의 의미와 실패 시 동작을 설명합니다.
+
+### 백엔드 서비스
+
+`SPRING_PROFILES_ACTIVE=oci` 기준입니다. (프로파일 이름이 `oci`지만 실제 배포처는 Railway입니다. 이름 변경은 Railway 변수도 함께 바꿔야 해서 미뤄 두었습니다.)
 
 ### 이미 등록됨 (확인만)
 
@@ -34,30 +31,75 @@ python -c "import secrets; print(secrets.token_urlsafe(32))"
 `SUPABASE_DB_URL` · `SUPABASE_DB_USER` · `SUPABASE_DB_PASSWORD`
 
 > `APP_CORS_ALLOWED_ORIGINS`는 `https://backoffice-ai-orpin.vercel.app` 여야 합니다 (끝 슬래시 없이).
-> 값이 비면 CORS 매핑 자체가 등록되지 않아 브라우저에서 API 호출이 막힙니다.
 
-### 지금 추가 (필수)
+### 로그인 (필수)
+
+| 변수 | 값 | 비고 |
+|---|---|---|
+| `OFFICE_AUTH_ALLOWED_EMAILS` | 본인 이메일 (쉼표로 여러 개) | **비면 아무도 로그인 불가** |
+
+나머지는 배포 프로파일에 기본값이 들어 있어 **값이 같다면 등록하지 않아도 됩니다.**
+
+| 변수 | 기본값 | 언제 바꾸나 |
+|---|---|---|
+| `OFFICE_AUTH_ENABLED` | `true` | 임시로 인증을 끌 때만 `false` |
+| `OFFICE_AUTH_REDIRECT_URI` | `https://backoffice-ai-orpin.vercel.app/api/auth/callback` | 프런트 도메인이 바뀌면 |
+| `OFFICE_AUTH_SUCCESS_REDIRECT` | `https://backoffice-ai-orpin.vercel.app/` | 위와 동일 |
+| `OFFICE_AUTH_COOKIE_SECURE` | `true` | https가 아닌 환경에서만 `false` |
+| `OFFICE_AUTH_COOKIE_SAME_SITE` | `Lax` | 아래 설명 참고 |
+
+> **리디렉션 주소는 Railway가 아니라 Vercel 도메인이어야 합니다.**
+> `frontend/static/vercel.json`이 `/api/*`를 Railway로 rewrite하므로 브라우저에는 `vercel.app` 한 도메인만 보입니다.
+> Railway 주소로 잡으면 세션 쿠키가 `railway.app`에 저장되고, 이후 요청은 `vercel.app`으로 가서
+> 쿠키가 실리지 않습니다. 로그인은 되는데 **새로고침하면 계속 풀리는** 증상이 이것입니다.
+> 같은 이유로 쿠키는 교차 도메인이 아니므로 `SameSite=Lax`로 충분합니다.
+
+### Slack 연동
 
 | 변수 | 값 | 가져오는 곳 |
 |---|---|---|
-| `APP_AUTH_API_KEY` | 랜덤 문자열 | 위 명령으로 직접 생성 |
+| `OFFICE_SLACK_CLIENT_ID` | 발급값 | api.slack.com → Basic Information |
+| `OFFICE_SLACK_CLIENT_SECRET` | 발급값 | 같은 화면 |
+| `OFFICE_SLACK_REDIRECT_URI` | `https://backoffice-ai-orpin.vercel.app/api/slack/callback` | Slack 앱의 Redirect URLs와 **글자까지 동일** |
+| `OFFICE_SLACK_REVIEW_BASE_URL` | `https://backoffice-ai-orpin.vercel.app` | 알림에 넣을 검토 화면 주소 |
 
-### 내일 추가 (외부 연동 시)
+뒤 두 개는 기본값과 같으면 등록하지 않아도 됩니다.
+
+### 외부 연동 (쓸 때만)
 
 | 변수 | 값 | 가져오는 곳 |
 |---|---|---|
 | `OFFICE_TOSS_ENABLED` | `true` | — |
-| `OFFICE_TOSS_CLIENT_ID` | 발급값 | 토스증권 개발자센터 (§3) |
-| `OFFICE_TOSS_CLIENT_SECRET` | 발급값 | 토스증권 개발자센터 (§3) |
+| `OFFICE_TOSS_CLIENT_ID` / `_SECRET` | 발급값 | 토스증권 개발자센터 (§3) |
 | `OFFICE_TOSS_WATCHLIST` | `005930,000660,373220` | 원하는 종목코드 |
 | `OFFICE_GMAIL_ENABLED` | `true` | — |
-| `OFFICE_GMAIL_REDIRECT_URI` | `https://backoffice-ai-production.up.railway.app/api/gmail/callback` | **반드시 등록.** 누락 시 localhost로 리다이렉트돼 인증이 끝나지 않는다 |
-| `OFFICE_AI_NEWS_SUMMARY_PROVIDER` | `openai` | 기본은 `ollama`(로컬). Railway엔 ollama가 없으므로 AI 브리핑을 쓰려면 필수 |
+| `OFFICE_GMAIL_REDIRECT_URI` | `https://backoffice-ai-production.up.railway.app/api/gmail/callback` | **이미 등록된 값 유지.** Gmail은 쿠키를 쓰지 않아 Railway 주소 그대로 둡니다 |
+| `OFFICE_AI_NEWS_SUMMARY_PROVIDER` | `openai` | Railway엔 ollama가 없습니다 |
 | `OFFICE_AI_NEWS_OPEN_AI_API_KEY` | API 키 | OpenAI (§5) |
-| `OFFICE_AI_NEWS_SUMMARY_MODEL` | 모델명 | OpenAI (§5) — 기본값 검증 필요 |
+| `OFFICE_AI_NEWS_SUMMARY_MODEL` | 모델명 | OpenAI (§5) |
 
 > Kotlin과 Python이 OpenAI 키를 **따로** 읽습니다.
 > 백엔드는 `OFFICE_AI_NEWS_OPEN_AI_API_KEY`, 워커는 `OPENAI_API_KEY`. 양쪽 다 필요합니다.
+
+### 워커 → 백엔드 저장 (워커 서비스에도 등록)
+
+워커는 DB에 직접 쓰지 않고 백엔드의 워커 전용 API로 결과를 넘깁니다.
+
+| 서비스 | 변수 | 값 |
+|---|---|---|
+| 백엔드 | `OFFICE_AUTOMATION_WORKER_API_KEY` | 긴 랜덤 문자열 |
+| 워커 | `WORKER_API_KEY` | **위와 같은 값** |
+| 워커 | `BACKEND_API_URL` | `https://backoffice-ai-production.up.railway.app` |
+
+> 두 값이 다르면 백엔드가 401로 막고 **자동화 결과가 조용히 사라집니다.**
+> 백엔드 쪽 키가 비어 있으면 워커 경로는 전부 거부됩니다(설정 누락 시 무인증으로 열리지 않도록).
+> `BACKEND_API_URL`은 Railway 내부 주소를 써도 됩니다. Vercel을 거칠 필요가 없습니다.
+
+### 더 이상 쓰지 않음 (지워도 됨)
+
+`APP_AUTH_ENABLED` · `APP_AUTH_API_KEY` — Google 로그인으로 대체됐습니다.
+
+워커 서비스의 `SUPABASE_PG_DSN` · `SUPABASE_DB_USER` · `SUPABASE_DB_PASSWORD`도 더 이상 필요 없습니다(백엔드를 통해 저장). 백엔드 쪽 DB 변수는 그대로 둡니다.
 
 ---
 

@@ -15,6 +15,7 @@ class InstagramToonService(
     private val properties: OfficeProperties,
     private val objectMapper: ObjectMapper,
     private val aiOperationsService: AiOperationsService,
+    private val llm: LlmClient,
 ) {
     fun generate(request: CreateInstagramToonRequest): InstagramToon {
         val startedAt = System.nanoTime()
@@ -38,12 +39,19 @@ class InstagramToonService(
         val output = process.inputStream.bufferedReader().readText()
         if (process.exitValue() != 0) throw IllegalStateException(output.takeLast(1_500).ifBlank { "대본 생성에 실패했습니다." })
         return read(id).also { toon ->
+            // 워커가 대본 JSON 에 model·usage 를 같이 적어 준다. 없으면(구버전 파일) 0 으로 남는다.
+            val model = toon.model ?: System.getenv("INSTAGRAM_TOON_MODEL") ?: "gpt-5.6-luna"
+            val inputTokens = toon.usage?.inputTokens ?: 0
+            val outputTokens = toon.usage?.outputTokens ?: 0
             aiOperationsService.record(
                 agent = "인스타툰 대본 에이전트",
                 provider = "Python 자동화",
-                model = "INSTAGRAM_TOON_MODEL",
+                model = model,
                 tools = listOf("Python 대본 생성기", "OpenAI 호환 모델"),
                 durationMs = (System.nanoTime() - startedAt) / 1_000_000,
+                inputTokens = inputTokens,
+                outputTokens = outputTokens,
+                estimatedCostUsd = llm.estimateCostUsd(model, inputTokens, outputTokens),
                 resultPreview = "${toon.title} · ${toon.panelCount}컷 대본을 만들었습니다.",
             )
         }
@@ -66,5 +74,13 @@ class InstagramToonService(
 }
 
 data class CreateInstagramToonRequest(val episode: String = "", val tone: String = "공감형", val panelCount: Int = 4)
-data class InstagramToon(val id: String, val episode: String, val tone: String, @JsonProperty("panel_count") val panelCount: Int, val title: String, val caption: String, val hashtags: List<String>, val panels: List<InstagramToonPanel>, @JsonProperty("created_at") val createdAt: String)
+data class InstagramToon(val id: String, val episode: String, val tone: String, @JsonProperty("panel_count") val panelCount: Int, val title: String, val caption: String, val hashtags: List<String>, val panels: List<InstagramToonPanel>, @JsonProperty("created_at") val createdAt: String, val model: String? = null, val usage: WorkerTokenUsage? = null)
+/** 워커(Python)가 돌려주는 토큰 사용량. automation/shared/usage.py 의 as_dict 와 같은 형식이다. */
+data class WorkerTokenUsage(
+    val model: String = "",
+    @JsonProperty("input_tokens") val inputTokens: Long = 0,
+    @JsonProperty("output_tokens") val outputTokens: Long = 0,
+    val calls: Int = 0,
+)
+
 data class InstagramToonPanel(val number: Int, val scene: String, val dialogue: String, val narration: String, @JsonProperty("image_prompt") val imagePrompt: String)

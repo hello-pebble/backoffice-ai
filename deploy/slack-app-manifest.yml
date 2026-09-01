@@ -1,0 +1,48 @@
+# Slack 앱 매니페스트. api.slack.com/apps → Create New App → From an app manifest 에 붙여 넣습니다.
+#
+# 붙여 넣기 전에 redirect_urls 의 도메인을 실제 API 도메인으로 바꾸세요.
+# Slack 은 리디렉션 URL 에 HTTPS 만 허용합니다. 로컬(http://127.0.0.1:8765)은 등록할 수 없으니
+# 배포 도메인을 쓰거나 ngrok·cloudflared 같은 터널의 https 주소를 넣고,
+# 같은 값을 office.slack.redirect-uri(OFFICE_SLACK_REDIRECT_URI)에도 글자 그대로 넣어야 합니다.
+#
+# 들어오는 요청(슬래시 명령·이벤트·대화형 버튼)은 쓰지 않습니다. 우리 연동은 나가는 방향
+# chat.postMessage 하나뿐이라 Request URL 검증이 필요 없습니다.
+display_information:
+  name: Push Studio
+  description: 검토 대본 초안이 준비되면 검토 링크를 알립니다.
+  long_description: 백오피스 대시보드가 만든 숏폼 검토 대본 초안을 알립니다. 대본 전문은 보내지 않고, 초안 제목과 검토 화면 링크만 지정한 채널로 보냅니다. 검토와 승인은 대시보드에서 합니다.
+  background_color: "#19242e"
+
+features:
+  bot_user:
+    display_name: Push Studio
+    always_online: false
+
+oauth_config:
+  redirect_urls:
+    # TODO: 실제 API 도메인으로 교체. office.slack.redirect-uri 와 정확히 같아야 합니다.
+    - https://your-api-domain.example.com/api/slack/callback
+  scopes:
+    bot:
+      # 지정한 채널에 알림을 보낸다.
+      - chat:write
+      # 선택. 봇을 초대하지 않은 공개 채널에도 보낼 수 있게 한다.
+      # 이 줄을 지워도 동작한다. 대신 알림 채널에서 /invite 로 봇을 초대해야 하고,
+      # 초대 전에는 chat.postMessage 가 not_in_channel 로 실패한다(초안 저장은 그대로 성공).
+      # Bot Token Scopes 에서만 고를 수 있다. User Token Scopes 목록에는 없다.
+      - chat:write.public
+      # 대시보드의 채널 선택 목록을 만든다.
+      - channels:read
+      # 비공개 채널을 목록에 포함한다. 비공개 채널은 봇을 초대해야 보인다.
+      - groups:read
+
+settings:
+  # 이벤트·대화형 기능을 쓰지 않으므로 수신 URL 을 두지 않는다.
+  event_subscriptions:
+    bot_events: []
+  interactivity:
+    is_enabled: false
+  org_deploy_enabled: false
+  socket_mode_enabled: false
+  # 토큰 회전을 켜면 저장한 봇 토큰을 주기적으로 갱신해야 한다. 지금 코드는 갱신을 하지 않는다.
+  token_rotation_enabled: false

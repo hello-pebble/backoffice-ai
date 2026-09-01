@@ -1,9 +1,17 @@
 # Kotlin 대시보드 설정. 복사본은 config/dashboard.properties로 저장하세요.
 # 같은 값을 환경 변수(config/env.example 참고)로도 줄 수 있습니다. 배포 환경에서는 환경 변수를 사용하세요.
 
-# 접근 인증. enabled=true 인데 api-key 가 비어 있으면 앱이 시작되지 않습니다.
-app.auth.enabled=false
-app.auth.api-key=
+# 접근 인증. Google 로그인 세션 쿠키로 /api 를 지킵니다. 공유 API 키는 더 이상 쓰지 않습니다.
+# 자격증명은 Gmail 연동과 같은 Google 클라이언트를 쓰고, 콘솔에 아래 redirect-uri 만 추가하면 됩니다.
+# allowed-emails 가 비어 있으면 아무도 로그인할 수 없습니다(닫힌 기본값).
+office.auth.enabled=false
+office.auth.allowed-emails=
+office.auth.redirect-uri=http://127.0.0.1:8765/api/auth/callback
+office.auth.success-redirect=http://127.0.0.1:8765/
+# 배포에서는 secure=true 입니다. 프런트가 /api 를 프록시하면(현재 Vercel rewrite) same-site=Lax 로 충분하고,
+# 프런트가 API 를 다른 도메인으로 직접 부르면 same-site=None 이어야 쿠키가 붙습니다.
+office.auth.cookie-secure=false
+office.auth.cookie-same-site=Lax
 app.cors.allowed-origins=http://127.0.0.1:8765
 
 # 토스증권 Open API. 자격증명을 받은 뒤 enabled=true 로 바꾸세요.
@@ -17,6 +25,9 @@ office.toss.watchlist=005930,000660,373220
 office.gmail.enabled=false
 office.gmail.redirect-uri=http://127.0.0.1:8765/api/gmail/callback
 office.gmail.credentials-path=data/office-dashboard/gmail-credentials.json
+# 화면에 띄울 "확인할 메일"의 기준. Gmail 검색 문법을 그대로 씁니다.
+# in:inbox 라서 스팸·휴지통은 처음부터 빠집니다. 필요하면 -category:updates 도 추가하세요.
+#office.gmail.query=in:inbox is:unread -category:promotions -category:social
 office.gmail.token-path=data/office-dashboard/gmail-token
 
 # Python 자동화의 실행 위치입니다. 자동화는 Kotlin이 호출할 때만 실행됩니다.
@@ -31,3 +42,20 @@ office.ai-news.ollama-base-url=http://127.0.0.1:11434
 office.ai-news.ollama-model=llama3.2:1b
 office.ai-news.input-price-per-million-usd=0.20
 office.ai-news.output-price-per-million-usd=1.20
+
+# Slack 앱 OAuth. 화면의 "Slack 연결" 버튼으로 설치하면 봇 토큰이 저장되고 chat.postMessage 로 알립니다.
+# 연결 전에는 알림 상태가 NOT_CONFIGURED 로만 남고 초안 저장은 계속됩니다.
+# client-secret 은 커밋하지 말고 환경 변수나 복사본(config/dashboard.properties)에만 넣으세요.
+office.slack.client-id=
+office.slack.client-secret=
+office.slack.redirect-uri=http://127.0.0.1:8765/api/slack/callback
+office.slack.review-base-url=http://127.0.0.1:8765
+
+# LLM 공통 호출 설정. OpenAI 호환 API와 Ollama 호출이 모두 이 값을 씁니다.
+# max-attempts 는 429·5xx·연결 실패에만 적용되고 4xx 는 재시도하지 않습니다.
+office.llm.request-timeout-seconds=120
+office.llm.max-attempts=3
+office.llm.retry-delay-millis=500
+# 모델별 100만 토큰 단가(입력,출력). 키에 점이 들어가므로 대괄호 표기를 씁니다.
+# 없는 모델은 office.ai-news.input/output-price-per-million-usd 값을 씁니다.
+#office.llm.prices[gpt-3.5-turbo]=0.50,1.50

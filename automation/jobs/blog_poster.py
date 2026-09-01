@@ -21,7 +21,7 @@ from config.settings import (
     RETRY_DELAY
 )
 from automation.shared.logger import logger
-from automation.shared.postgres_database import Database
+from automation.shared.backend_client import Database
 
 
 class BlogPoster:

@@ -30,13 +30,14 @@ class GmailService(private val properties: OfficeProperties, private val tokenSt
         return try {
             val credential = flow().loadCredential(userId) ?: return GmailOverview(false, "Gmail 연결이 아직 완료되지 않았습니다.")
             val gmail = gmail(credential)
-            val unread = gmail.users().labels().get("me", "INBOX").execute().messagesUnread ?: 0
-            val messages = gmail.users().messages().list("me").setLabelIds(listOf("INBOX")).setMaxResults(5).execute().messages.orEmpty().map { message ->
+            // 라벨의 안 읽음 수는 홍보·소셜까지 세서 "확인할 메일"보다 늘 크다. 같은 기준으로 세고 보여 준다.
+            val found = gmail.users().messages().list("me").setQ(properties.gmail.query).setMaxResults(COUNT_LIMIT).execute().messages.orEmpty()
+            val messages = found.take(5).map { message ->
                 val detail = gmail.users().messages().get("me", message.id).setFormat("metadata").setMetadataHeaders(listOf("From", "Subject", "Date")).execute()
                 val headers = detail.payload.headers.associate { it.name.lowercase() to it.value }
                 MailItem(headers["from"] ?: "(보낸사람 없음)", headers["subject"] ?: "(제목 없음)", headers["date"] ?: "")
             }
-            GmailOverview(true, unread = unread, messages = messages)
+            GmailOverview(true, unread = found.size, messages = messages, more = found.size >= COUNT_LIMIT)
         } catch (error: Exception) {
             log.warn("Gmail 개요 조회 실패", error)
             GmailOverview(false, "Gmail을 불러오지 못했습니다.")
@@ -76,6 +77,12 @@ class GmailService(private val properties: OfficeProperties, private val tokenSt
         if (inline.isNotBlank()) return StringReader(inline).use { GoogleClientSecrets.load(jsonFactory, it) }
         require(Files.exists(credentialsPath())) { "Gmail OAuth 자격증명이 설정되지 않았습니다." }
         return Files.newBufferedReader(credentialsPath()).use { GoogleClientSecrets.load(jsonFactory, it) }
+    }
+
+    companion object {
+        // ponytail: 개수는 이 상한까지만 정확하다. 그 이상은 화면이 "50+"로 보여 준다.
+        // 정확한 총계가 필요해지면 페이지를 끝까지 넘겨야 하는데, 지금 쓰임에는 과하다.
+        private const val COUNT_LIMIT = 50L
     }
 
     private fun hasCredentials() = properties.gmail.credentialsJson.isNotBlank() || Files.exists(credentialsPath())

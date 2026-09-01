@@ -57,6 +57,9 @@ Thumbs.db
 *.bak
 *.tmp
 config/dashboard.properties
+# Railway Variables 에 붙여 넣을 실제 값. .example 만 커밋한다.
+config/railway-backend.env
+config/railway-worker.env
 data/office-dashboard/gmail-credentials.json
 data/office-dashboard/gmail-token/
 deploy/oci.env

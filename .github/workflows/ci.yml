@@ -51,6 +51,12 @@ jobs:
           pip install -r automation/requirements.txt
           python -c "import automation.main"
 
+      # automation/tests 는 표준 라이브러리만 쓰는 pytest 스타일이다. 러너만 CI 에서 설치한다.
+      - name: Run Python tests
+        run: |
+          pip install pytest
+          python -m pytest automation/tests -q
+
   frontend:
     name: frontend-check
     runs-on: ubuntu-latest

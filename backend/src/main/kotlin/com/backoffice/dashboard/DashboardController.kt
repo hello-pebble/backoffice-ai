@@ -1,6 +1,9 @@
 package com.backoffice.dashboard
 
+import jakarta.servlet.http.HttpServletRequest
+import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
+import org.springframework.http.ResponseCookie
 import org.springframework.http.ResponseEntity
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.web.bind.annotation.DeleteMapping
@@ -26,6 +29,11 @@ class DashboardController(
     private val aiNewsBriefingService: AiNewsBriefingService,
     private val aiOperationsService: AiOperationsService,
     private val contentStudioService: ContentStudioService,
+    private val topicDraftService: TopicDraftService,
+    private val authService: AuthService,
+    private val slackService: SlackService,
+    private val properties: OfficeProperties,
+    private val automationRepository: AutomationRepository,
     private val jdbc: JdbcTemplate,
 ) {
     @GetMapping("/dashboard")
@@ -114,7 +122,132 @@ class DashboardController(
     } catch (error: Exception) {
         // 서비스가 원인과 대상 주소를 메시지에 담아 IllegalStateException 으로 올린다.
         // 여기까지 오는 건 그 밖의 경우뿐이라 예외 종류라도 남긴다.
-        throw ResponseStatusException(HttpStatus.BAD_GATEWAY, "AI 브리핑 처리 중 오류가 발생했습니다: ${AiNewsBriefingService.reasonOf(error)}")
+        throw ResponseStatusException(HttpStatus.BAD_GATEWAY, "AI 브리핑 처리 중 오류가 발생했습니다: ${LlmClient.reasonOf(error)}")
+    }
+
+    @GetMapping("/topic-drafts")
+    fun topicDrafts() = topicDraftService.list()
+
+    @PostMapping("/topic-drafts/refresh")
+    fun refreshTopicDrafts(): TopicDraft = try {
+        topicDraftService.refresh()
+    } catch (error: IllegalArgumentException) {
+        throw ResponseStatusException(HttpStatus.BAD_REQUEST, error.message)
+    } catch (error: IllegalStateException) {
+        throw ResponseStatusException(HttpStatus.BAD_GATEWAY, error.message)
+    } catch (error: Exception) {
+        throw ResponseStatusException(HttpStatus.BAD_GATEWAY, "주제 대본 초안 처리 중 오류가 발생했습니다: ${LlmClient.reasonOf(error)}")
+    }
+
+    // 알림 재시도. Slack 이 실패해도 초안은 이미 저장돼 있으므로 여기서만 다시 보낸다.
+    @PostMapping("/topic-drafts/{id}/notify")
+    fun notifyTopicDraft(@PathVariable id: String): TopicDraft = try {
+        topicDraftService.notify(id)
+    } catch (error: IllegalArgumentException) {
+        throw ResponseStatusException(HttpStatus.BAD_REQUEST, error.message)
+    }
+
+    // 워커(Python)가 DB 에 직접 쓰지 않고 결과만 넘긴다. 스키마를 아는 곳은 백엔드 하나다.
+    @PostMapping("/worker/keywords")
+    fun saveWorkerKeyword(@RequestBody request: SaveKeywordRequest): Map<String, Long> = try {
+        mapOf("id" to automationRepository.saveKeyword(request))
+    } catch (error: IllegalArgumentException) {
+        throw ResponseStatusException(HttpStatus.BAD_REQUEST, error.message)
+    }
+
+    @GetMapping("/worker/keywords/unused")
+    fun unusedWorkerKeywords(limit: Int?): List<AutomationKeyword> =
+        automationRepository.unusedKeywords((limit ?: 10).coerceIn(1, 100))
+
+    @PostMapping("/worker/contents")
+    fun saveWorkerContent(@RequestBody request: SaveContentRequest): Map<String, Boolean> = try {
+        automationRepository.saveContent(request)
+        mapOf("ok" to true)
+    } catch (error: IllegalArgumentException) {
+        throw ResponseStatusException(HttpStatus.BAD_REQUEST, error.message)
+    }
+
+    @PostMapping("/worker/posting-records")
+    fun saveWorkerPostingRecord(@RequestBody request: SavePostingRecordRequest): Map<String, Boolean> = try {
+        automationRepository.savePostingRecord(request)
+        mapOf("ok" to true)
+    } catch (error: IllegalArgumentException) {
+        throw ResponseStatusException(HttpStatus.BAD_REQUEST, error.message)
+    }
+
+    @GetMapping("/auth/login")
+    // 브라우저 내비게이션에는 쿠키·헤더를 붙일 수 없어 302 대신 주소를 돌려주고 화면에서 이동한다.
+    fun login(): Map<String, String> = try {
+        mapOf("url" to authService.authorizationUrl())
+    } catch (error: IllegalArgumentException) {
+        throw ResponseStatusException(HttpStatus.CONFLICT, error.message)
+    }
+
+    @GetMapping("/auth/callback")
+    fun authCallback(code: String?, state: String?): ResponseEntity<String> {
+        val result = if (code.isNullOrBlank() || state.isNullOrBlank()) LoginResult(null, "로그인 정보가 올바르지 않습니다.")
+        else authService.completeLogin(code, state)
+        val token = result.token
+            ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).header("Content-Type", "text/html; charset=utf-8")
+                .body(page(result.error ?: "로그인하지 못했습니다."))
+        return ResponseEntity.status(HttpStatus.FOUND)
+            .header(HttpHeaders.SET_COOKIE, sessionCookie(token, properties.auth.sessionHours * 3600).toString())
+            .header(HttpHeaders.LOCATION, properties.auth.successRedirect)
+            .body("")
+    }
+
+    @GetMapping("/auth/me")
+    fun me(request: HttpServletRequest): Map<String, Any> {
+        val email = authService.emailOf(SessionAuthFilter.sessionToken(request))
+            ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "로그인이 필요합니다.")
+        return mapOf("email" to email)
+    }
+
+    @PostMapping("/auth/logout")
+    fun logout(request: HttpServletRequest): ResponseEntity<Map<String, Boolean>> {
+        authService.logout(SessionAuthFilter.sessionToken(request))
+        return ResponseEntity.ok().header(HttpHeaders.SET_COOKIE, sessionCookie("", 0).toString()).body(mapOf("ok" to true))
+    }
+
+    private fun sessionCookie(value: String, maxAgeSeconds: Long): ResponseCookie =
+        ResponseCookie.from(SessionAuthFilter.COOKIE, value)
+            .httpOnly(true).path("/").maxAge(maxAgeSeconds)
+            .secure(properties.auth.cookieSecure).sameSite(properties.auth.cookieSameSite).build()
+
+    private fun page(message: String) = "<!doctype html><html lang=\"ko\"><body><p>$message</p></body></html>"
+
+    @GetMapping("/slack/status")
+    fun slackStatus() = slackService.status()
+
+    @GetMapping("/slack/connect")
+    fun connectSlack(): Map<String, String> = try {
+        mapOf("url" to slackService.installUrl())
+    } catch (error: IllegalArgumentException) {
+        throw ResponseStatusException(HttpStatus.CONFLICT, error.message)
+    }
+
+    @GetMapping("/slack/callback")
+    fun slackCallback(code: String?, state: String?): ResponseEntity<String> {
+        val installed = !code.isNullOrBlank() && !state.isNullOrBlank() && slackService.completeInstall(code, state)
+        val message = if (installed) "Slack 연결이 완료되었습니다. 이 창을 닫고 대시보드에서 채널을 고르세요." else "Slack 연결을 완료하지 못했습니다. 다시 시도하세요."
+        return ResponseEntity.status(if (installed) HttpStatus.OK else HttpStatus.BAD_REQUEST)
+            .header("Content-Type", "text/html; charset=utf-8").body(page(message))
+    }
+
+    @GetMapping("/slack/channels")
+    fun slackChannels(): List<SlackChannel> = try {
+        slackService.channels()
+    } catch (error: IllegalArgumentException) {
+        throw ResponseStatusException(HttpStatus.CONFLICT, error.message)
+    } catch (error: IllegalStateException) {
+        throw ResponseStatusException(HttpStatus.BAD_GATEWAY, error.message)
+    }
+
+    @PostMapping("/slack/channel")
+    fun selectSlackChannel(@RequestBody request: SelectSlackChannelRequest): SlackStatus = try {
+        slackService.selectChannel(request.channelId)
+    } catch (error: IllegalArgumentException) {
+        throw ResponseStatusException(HttpStatus.BAD_REQUEST, error.message)
     }
 
     @GetMapping("/gmail/connect")
@@ -135,8 +268,9 @@ class DashboardController(
     }
 }
 
+data class SelectSlackChannelRequest(val channelId: String = "")
 data class DashboardResponse(val generatedAt: String, val gmail: GmailOverview, val stocks: StockOverview)
-data class GmailOverview(val connected: Boolean, val message: String? = null, val unread: Int? = null, val messages: List<MailItem> = emptyList())
+data class GmailOverview(val connected: Boolean, val message: String? = null, val unread: Int? = null, val messages: List<MailItem> = emptyList(), val more: Boolean = false)
 data class MailItem(val from: String, val subject: String, val date: String)
 data class StockOverview(val connected: Boolean, val message: String? = null, val items: List<StockItem> = emptyList())
 data class StockItem(val symbol: String, val name: String, val price: String, val currency: String, val timestamp: String?)

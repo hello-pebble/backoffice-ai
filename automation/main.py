@@ -25,8 +25,11 @@ def run_keyword_collection():
 
 def run_content_generation():
     logger.info("콘텐츠 생성 실행")
-    count = ContentGenerator().generate_from_keywords()
+    generator = ContentGenerator()
+    count = generator.generate_from_keywords()
     logger.info(f"콘텐츠 생성 완료: {count}개")
+    # 토큰 사용량은 로그가 아니라 stdout 한 줄로 넘긴다. 백오피스가 이 줄만 읽는다.
+    print(generator.usage.line(), flush=True)
 
 
 def run_posting():
