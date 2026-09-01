@@ -30,3 +30,10 @@ dependencies {
 kotlin { compilerOptions { freeCompilerArgs.add("-Xjsr305=strict") } }
 
 tasks.withType<Test> { useJUnitPlatform() }
+
+// 설정(config/), 화면(frontend/static/), 데이터(data/) 경로가 모두 저장소 루트 기준이다.
+// Gradle 의 기본 작업 디렉터리는 backend/ 라서 그대로 두면 dashboard.properties 를 못 읽고
+// 화면도 404 가 된다. README 가 안내하는 `:backend:bootRun` 이 루트에서 실행한 것처럼 동작하게 맞춘다.
+tasks.named<org.springframework.boot.gradle.tasks.run.BootRun>("bootRun") {
+    workingDir = rootProject.projectDir
+}
