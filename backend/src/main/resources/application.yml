@@ -26,7 +26,6 @@ office:
     worker-api-key: ${OFFICE_AUTOMATION_WORKER_API_KEY:}
   gmail:
     enabled: ${OFFICE_GMAIL_ENABLED:false}
-    redirect-uri: ${OFFICE_GMAIL_REDIRECT_URI:http://127.0.0.1:8765/api/gmail/callback}
     credentials-json: ${OFFICE_GMAIL_CREDENTIALS_JSON:}
   auth:
     enabled: ${OFFICE_AUTH_ENABLED:false}

@@ -23,9 +23,7 @@ internal class FakeDocumentStore : JsonDocumentStore(mock(JdbcTemplate::class.ja
  * 보낸 알림을 모아 두는 Slack 대역.
  * Mockito 로는 Kotlin 의 non-null 반환을 스텁하지 않으면 NPE 가 나고 ArgumentCaptor 도 터진다.
  */
-internal class RecordingSlackService(
-    properties: OfficeProperties = OfficeProperties(),
-) : SlackService(properties, ObjectMapper(), FakeDocumentStore()) {
+internal class RecordingSlackService : SlackService(OfficeProperties(), ObjectMapper(), FakeDocumentStore()) {
     val sent = mutableListOf<String>()
     var thrown: RuntimeException? = null
 

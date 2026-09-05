@@ -214,10 +214,8 @@ class DashboardController(
             .body(mapOf("ok" to true))
     }
 
-    private fun sessionCookie(value: String, maxAgeSeconds: Long): ResponseCookie =
-        ResponseCookie.from(SessionAuthFilter.COOKIE, value)
-            .httpOnly(true).path("/").maxAge(maxAgeSeconds)
-            .secure(properties.auth.cookieSecure).sameSite(properties.auth.cookieSameSite).build()
+    private fun sessionCookie(value: String, maxAgeSeconds: Long) =
+        cookie(SessionAuthFilter.COOKIE, value, maxAgeSeconds, httpOnly = true)
 
     /**
      * 세션 쿠키는 HttpOnly 라 화면이 읽을 수 없다. 그래서 로그인 여부를 알려면 /api/auth/me 왕복을
@@ -225,9 +223,12 @@ class DashboardController(
      * 값이 없는 힌트 쿠키를 하나 더 줘서 화면이 첫 줄에서 바로 판단하게 한다.
      * 이 쿠키는 인증에 쓰이지 않는다. 위조해도 서버는 세션 쿠키만 본다.
      */
-    private fun hintCookie(value: String, maxAgeSeconds: Long): ResponseCookie =
-        ResponseCookie.from(SessionAuthFilter.HINT_COOKIE, value)
-            .httpOnly(false).path("/").maxAge(maxAgeSeconds)
+    private fun hintCookie(value: String, maxAgeSeconds: Long) =
+        cookie(SessionAuthFilter.HINT_COOKIE, value, maxAgeSeconds, httpOnly = false)
+
+    private fun cookie(name: String, value: String, maxAgeSeconds: Long, httpOnly: Boolean): ResponseCookie =
+        ResponseCookie.from(name, value)
+            .httpOnly(httpOnly).path("/").maxAge(maxAgeSeconds)
             .secure(properties.auth.cookieSecure).sameSite(properties.auth.cookieSameSite).build()
 
     private fun page(message: String) = "<!doctype html><html lang=\"ko\"><body><p>$message</p></body></html>"
@@ -264,23 +265,6 @@ class DashboardController(
         slackService.selectChannel(request.channelId)
     } catch (error: IllegalArgumentException) {
         throw ResponseStatusException(HttpStatus.BAD_REQUEST, error.message)
-    }
-
-    @GetMapping("/gmail/connect")
-    // 브라우저 내비게이션은 X-API-Key 헤더를 붙일 수 없다. 302 대신 URL을 돌려주고
-    // 화면에서 이동시켜, 인증 필터에 예외 경로를 뚫지 않는다.
-    fun connectGmail(): Map<String, String> = try {
-        mapOf("url" to gmailService.authorizationUrl())
-    } catch (error: IllegalArgumentException) {
-        throw ResponseStatusException(HttpStatus.CONFLICT, error.message)
-    }
-
-    @GetMapping("/gmail/callback")
-    fun gmailCallback(code: String?, state: String?): ResponseEntity<String> {
-        val authorized = !code.isNullOrBlank() && !state.isNullOrBlank() && gmailService.completeAuthorization(code, state)
-        val message = if (authorized) "Gmail 연결이 완료되었습니다. 이 창을 닫고 대시보드를 새로고침하세요." else "Gmail 연결을 완료하지 못했습니다. 다시 시도하세요."
-        return ResponseEntity.status(if (authorized) HttpStatus.OK else HttpStatus.BAD_REQUEST).header("Content-Type", "text/html; charset=utf-8")
-            .body("<!doctype html><html lang=\"ko\"><body><p>$message</p></body></html>")
     }
 }
 
