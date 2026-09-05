@@ -3,16 +3,16 @@
 OpenAI API를 사용하여 블로그 글을 자동 생성합니다.
 """
 import uuid
-from datetime import datetime
 from typing import Dict, Any, Optional
 from openai import OpenAI
 from config.settings import (
     OPENAI_API_KEY,
     OPENAI_BASE_URL,
-    OPENAI_MODEL, 
+    OPENAI_MODEL,
     MIN_CONTENT_LENGTH,
     MAX_KEYWORDS_PER_DAY
 )
+from automation.shared.clock import now_kst
 from automation.shared.logger import logger
 from automation.shared.usage import UsageTracker
 from automation.shared.backend_client import Database
@@ -198,7 +198,7 @@ class ContentGenerator:
                 'title': title,
                 'content': content,
                 'tags': tags,
-                'created_date': datetime.now().isoformat(),
+                'created_date': now_kst().isoformat(),
                 'status': 'pending'
             }
             

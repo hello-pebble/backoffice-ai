@@ -4,7 +4,6 @@
 """
 import uuid
 import time
-from datetime import datetime
 from typing import Dict, Any, Optional
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -20,6 +19,7 @@ from config.settings import (
     MAX_RETRY_ATTEMPTS,
     RETRY_DELAY
 )
+from automation.shared.clock import now_kst
 from automation.shared.logger import logger
 from automation.shared.backend_client import Database
 
@@ -282,7 +282,7 @@ class BlogPoster:
             'id': str(uuid.uuid4()),
             'content_id': content_id,
             'blog_url': blog_url or '',
-            'posted_date': datetime.now().isoformat(),
+            'posted_date': now_kst().isoformat(),
             'status': status,
             'error_message': error_message
         }
@@ -294,7 +294,7 @@ class BlogPoster:
             content_data = {
                 'id': content_id,
                 'status': 'posted',
-                'posted_date': datetime.now().isoformat()
+                'posted_date': now_kst().isoformat()
             }
             self.db.save_content(content_data)
     

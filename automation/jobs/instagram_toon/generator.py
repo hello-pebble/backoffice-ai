@@ -1,11 +1,11 @@
 """짧은 에피소드를 인스타툰 대본으로 바꾸는 자동화 모듈입니다."""
 import json
-from datetime import datetime
 from pathlib import Path
 from typing import Any
 
 from openai import OpenAI
 
+from automation.shared.clock import now_kst
 from automation.shared.usage import UsageTracker
 from config.settings import INSTAGRAM_TOON_MODEL, INSTAGRAM_TOONS_DIR, OPENAI_API_KEY, OPENAI_BASE_URL
 
@@ -73,7 +73,7 @@ class InstagramToonGenerator:
             "caption": result.get("caption", ""),
             "hashtags": result.get("hashtags", []),
             "panels": panels,
-            "created_at": datetime.now().isoformat(),
+            "created_at": now_kst().isoformat(),
             "model": INSTAGRAM_TOON_MODEL,
             "usage": self.usage.as_dict(),
         }

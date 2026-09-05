@@ -3,9 +3,9 @@
 네이버 검색어 트렌드 및 인기 키워드를 수집합니다.
 """
 import requests
-from datetime import datetime
 from typing import List, Dict, Any
 from config.settings import NAVER_CLIENT_ID, NAVER_CLIENT_SECRET, MIN_SEARCH_VOLUME
+from automation.shared.clock import now_kst
 from automation.shared.logger import logger
 from automation.shared.backend_client import Database
 
@@ -113,7 +113,7 @@ class KeywordCollector:
             저장된 키워드 개수
         """
         saved_count = 0
-        collected_date = datetime.now().isoformat()
+        collected_date = now_kst().isoformat()
         
         for kw in keywords:
             try:
