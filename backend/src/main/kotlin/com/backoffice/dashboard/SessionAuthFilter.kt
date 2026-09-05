@@ -22,7 +22,6 @@ class SessionAuthFilter(
         "/api/health",
         "/api/auth/login",
         "/api/auth/callback",
-        "/api/gmail/callback",
         "/api/slack/callback",
     )
 

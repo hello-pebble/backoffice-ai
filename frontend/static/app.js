@@ -22,7 +22,7 @@ function renderOperations(data){
 function renderDashboard(d){
  const g=d.gmail,s=d.stocks;
  $('mail-count').textContent=g.connected?`확인할 메일 ${g.unread||0}건${g.more?'+':''}`:'';
- $('mail-list').innerHTML=g.connected?(g.messages.length?g.messages.map(x=>row(esc(x.subject),esc(x.from),`<span>${esc(x.date)}</span>`)).join(''):'확인할 메일이 없습니다.'):(g.message||'Gmail 연결 후 표시됩니다.');
+ $('mail-list').innerHTML=g.connected?(g.messages.length?g.messages.map(x=>row(esc(x.subject),esc(x.from),`<span>${esc(x.date)}</span>`)).join(''):'확인할 메일이 없습니다.'):(g.message||'Google 로그인 후 표시됩니다.');
  $('stock-list').innerHTML=s.connected&&s.items.length?s.items.map(x=>row(esc(x.name),esc(x.symbol),`<b>${won(Number(x.price))}</b>`)).join(''):(s.message||'토스증권 API 연결 후 표시됩니다.');
 }
 const PAGE_SIZE=5,pageState={};
@@ -40,7 +40,6 @@ function renderPaged(id,items,className,empty,card){
  target.className=s.className;
  target.innerHTML=s.items.slice(start,start+PAGE_SIZE).map(s.card).join('')+pager;
 }
-function pageReset(id){if(pageState[id])pageState[id].page=0}
 document.addEventListener('click',e=>{const b=e.target.closest('button[data-page]');if(!b)return;pageState[b.dataset.page].page+=Number(b.dataset.step);renderPaged(b.dataset.page)});
 // 목록이 길어져도 한 화면에 머물게 한다.
 function renderNews(items){renderPaged('news-list',items,'','아직 수집된 AI 소식이 없습니다.',x=>`<article class="news-card"><div class="news-meta">${x.read?'':'<i class="unread-dot"></i>'}<span>${esc(x.source)}</span><span class="tag">${esc(x.category)}</span><span>${esc(x.publishedAt||x.collectedAt)}</span></div><a href="${esc(x.url)}" target="_blank" rel="noreferrer" data-news-id="${esc(x.id)}">${esc(x.title)}</a><p>${esc(x.summary)}</p></article>`)}
@@ -68,9 +67,8 @@ async function load(){const [d,packages,news,briefing,aiOperations,topicDrafts,s
 async function newsRead(id){await fetch(`/api/ai-news/${id}/read`,{method:'PATCH'}).then(r=>r.json()).then(renderNews)}
 $('refresh').onclick=load;
 $('news-list').addEventListener('click',e=>{const a=e.target.closest('a[data-news-id]');if(a)newsRead(a.dataset.newsId)});
-$('news-refresh').onclick=async()=>{const b=$('news-refresh');b.disabled=true;b.textContent='수집 중…';try{pageReset('news-list');renderNews(await fetch('/api/ai-news/refresh',{method:'POST'}).then(r=>r.json()))}finally{b.disabled=false;b.textContent='소식 가져오기'}};
+$('news-refresh').onclick=async()=>{const b=$('news-refresh');b.disabled=true;b.textContent='수집 중…';try{if(pageState['news-list'])pageState['news-list'].page=0;renderNews(await fetch('/api/ai-news/refresh',{method:'POST'}).then(r=>r.json()))}finally{b.disabled=false;b.textContent='소식 가져오기'}};
 $('briefing-refresh').onclick=async()=>{const b=$('briefing-refresh');b.disabled=true;b.textContent='요약 중…';try{const r=await fetch('/api/ai-news/briefing/refresh',{method:'POST'});if(!r.ok){const error=await r.json();throw new Error(error.detail||'요약 생성에 실패했습니다.')}renderBriefing(await r.json())}catch(error){alert(error.message)}finally{b.disabled=false;b.textContent='핵심 3건 요약';const ops=await fetch('/api/ai-operations').then(r=>r.ok?r.json():null).catch(()=>null);if(ops)renderAiOperations(ops)}};
-$('gmail-connect').onclick=async e=>{e.preventDefault();const r=await fetch('/api/gmail/connect');if(!r.ok){const err=await r.json().catch(()=>({}));if(r.status!==401)alert(err.detail||'Gmail 연결 주소를 가져오지 못했습니다.');return}location.href=(await r.json()).url};
 $('ai-operations-refresh').onclick=async()=>renderAiOperations(await fetch('/api/ai-operations').then(r=>r.json()));
 $('content-package-form').onsubmit=async e=>{e.preventDefault();const form=e.target,button=$('content-package-submit');const data=new FormData(form);const payload={source:data.get('source'),tone:data.get('tone'),target:data.get('target'),channels:data.getAll('channels')};button.disabled=true;button.textContent='패키지 생성 중…';try{const r=await fetch('/api/content-packages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});if(!r.ok){const error=await r.json();throw new Error(error.detail||'콘텐츠 패키지 생성에 실패했습니다.')}form.reset();renderContentPackages(await fetch('/api/content-packages').then(response=>response.json()));renderAiOperations(await fetch('/api/ai-operations').then(response=>response.json()))}catch(error){alert(error.message)}finally{button.disabled=false;button.textContent='콘텐츠 패키지 생성'}};
 $('topic-draft-refresh').onclick=async()=>{const b=$('topic-draft-refresh');b.disabled=true;b.textContent='초안 생성 중…';try{const r=await fetch('/api/topic-drafts/refresh',{method:'POST'});if(!r.ok){const error=await r.json().catch(()=>({}));throw new Error(error.detail||'대본 초안 생성에 실패했습니다.')}renderTopicDrafts(await j('/api/topic-drafts')||[])}catch(error){alert(error.message)}finally{b.disabled=false;b.textContent='주제 수집 및 초안 생성';const ops=await j('/api/ai-operations');if(ops)renderAiOperations(ops)}};

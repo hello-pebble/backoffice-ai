@@ -19,7 +19,7 @@ class SessionAuthFilterTest {
     private fun filter(enabled: Boolean = true): SessionAuthFilter {
         val properties = OfficeProperties(auth = OfficeProperties.Auth(enabled = enabled, allowedEmails = listOf("owner@example.com")))
         documents.write("auth-sessions", listOf(AuthSession(AuthService.hash(token), "owner@example.com", OffsetDateTime.now().plusHours(1).toString())))
-        return SessionAuthFilter(properties, AuthService(properties, documents))
+        return SessionAuthFilter(properties, AuthService(properties, documents, PostgresDataStoreFactory(documents)))
     }
 
     private fun request(uri: String = "/api/tasks", method: String = "GET", session: String? = null) =
@@ -58,7 +58,6 @@ class SessionAuthFilterTest {
             request("/api/health"),
             request("/api/auth/login"),
             request("/api/auth/callback"),
-            request("/api/gmail/callback"),
             // 설치 후 Slack 이 브라우저를 되돌려 보낸다. 쿠키를 붙여 줄 수 없다.
             request("/api/slack/callback"),
             request("/api/tasks", method = "OPTIONS"),
