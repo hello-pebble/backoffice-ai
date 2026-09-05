@@ -14,11 +14,6 @@ if(document.cookie.split('; ').includes('office_session_hint=1'))hideLogin();
 const $=id=>document.getElementById(id), won=n=>new Intl.NumberFormat('ko-KR',{style:'currency',currency:'KRW',maximumFractionDigits:0}).format(n||0);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function row(left,sub,right){return `<div class="row"><div><b>${left}</b><span>${sub}</span></div><div class="right">${right}</div></div>`}
-function renderOperations(data){
- const pending=data.approvals.filter(x=>x.status==='대기'), late=data.tasks.filter(x=>x.status==='지연');
- $('sample-notice').textContent=data.isSample?'현재 확인 항목은 예시 데이터입니다. 실제 현황으로 수정해 사용하세요.':'';
- $('attention-list').innerHTML=[...late.map(x=>row(esc(x.title),`${esc(x.team)} · ${esc(x.owner)}`,`<span class="tag late">지연</span>`)),...pending.map(x=>row(esc(x.title),`${esc(x.type)} · ${esc(x.requester)}`,`<span class="tag wait">승인 대기</span>`))].join('')||'<p class="empty">현재 확인이 필요한 항목이 없습니다.</p>';
-}
 function renderDashboard(d){
  const g=d.gmail,s=d.stocks;
  $('mail-count').textContent=g.connected?`확인할 메일 ${g.unread||0}건${g.more?'+':''}`:'';
