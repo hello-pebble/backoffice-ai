@@ -1,13 +1,15 @@
 # Python 자동화
 
-백오피스의 블로그 자동화와 인스타툰 대본 생성을 담당하는 Python 워커입니다. 외부 발행은 검토 승인 전에는 실행하지 않습니다.
+백오피스의 **블로그 자동화**(키워드 수집 → 글 생성 → 네이버 발행)를 담당하는 Python 워커입니다. 외부 발행은 검토 승인 전에는 실행하지 않습니다.
+
+> 인스타툰 대본 생성은 **Kotlin 백엔드로 옮겼습니다**. 배포 이미지에 파이썬이 없어 실제로는 동작하지 않았고, 하는 일이 모델 한 번 호출이라 공용 `LlmClient`를 쓰는 편이 재시도·비용 기록·데모 상한을 그대로 받습니다. 이 폴더의 `jobs/instagram_toon/`과 `scripts/run_instagram_toon.py`는 **로컬 CLI 전용**으로 남겨 둔 것이며 대시보드는 부르지 않습니다.
 
 ## 구성
 
 - `main.py`: CLI 진입점. `--mode {api|scheduler|keyword|content|posting|all}`로 실행
 - `worker_api.py`: FastAPI 서버. Railway에서 백엔드(Kotlin `PythonAutomationService`)가 `POST /run`으로 원격 트리거할 때 사용(`X-Worker-Api-Key` 헤더 인증, 동시 실행은 락으로 방지)
-- `jobs/`: 키워드 수집(`keyword_collector.py`), 콘텐츠 생성(`content_generator.py`), 포스팅(`blog_poster.py`), 스케줄링(`scheduler.py`), 인스타툰 생성(`instagram_toon/generator.py`)
-- `scripts/run_instagram_toon.py`: 인스타툰 생성 수동 실행 CLI
+- `jobs/`: 키워드 수집(`keyword_collector.py`), 콘텐츠 생성(`content_generator.py`), 포스팅(`blog_poster.py`), 스케줄링(`scheduler.py`)
+- `jobs/instagram_toon/`, `scripts/run_instagram_toon.py`: 로컬 CLI 전용 인스타툰 생성기(대시보드는 Kotlin 쪽을 씁니다)
 - `shared/`: 화면·특정 업무에 종속되지 않는 재사용 유틸 — `logger.py`, `backend_client.py`(백엔드 API 호출), `usage.py`(토큰 사용량 집계)
 - `tests/`: `backend_client`, `settings_contract`, `usage` 단위 테스트
 - `requirements.txt`: Python 의존성

@@ -18,9 +18,13 @@
 **꺼져 있을 때 동작**: `GmailService.overview()`가 즉시 `연동 안 됨 + "Gmail 연동이 비활성화되어 있습니다."`를 반환합니다.
 켜져 있어도 credentials 파일이 없으면 `"Gmail OAuth 설정 파일이 없습니다."`, 인증 전이면 `"Gmail 연결이 아직 완료되지 않았습니다."`를 반환합니다. 예외는 잡아서 로그만 남기므로 앱이 죽지는 않습니다.
 
+> **바뀐 점**: 별도의 "Gmail 연결" 절차와 `/api/gmail/callback` 엔드포인트는 없어졌습니다.
+> Google 로그인이 `gmail.readonly` 동의까지 함께 받아 같은 저장소에 토큰을 넣습니다.
+> `OFFICE_GMAIL_REDIRECT_URI`도 더 이상 읽지 않습니다.
+
 **리스크**
-- **리다이렉트 URI는 Google Cloud 콘솔에 등록한 값과 문자 하나까지 같아야 합니다.** `OFFICE_GMAIL_REDIRECT_URI`, 콘솔 등록값, 실제 접속 도메인 세 곳이 모두 일치해야 하며 다르면 `redirect_uri_mismatch`로 실패합니다. 기본값은 로컬용 `http://127.0.0.1:8765/api/gmail/callback` 이므로, 배포 도메인에서 쓰려면 그 도메인 값을 따로 등록·설정해야 합니다.
-- `/api/gmail/callback`은 인증 필터의 예외 경로입니다. 콜백은 API 키 없이 열려 있습니다.
+- **리다이렉트 URI는 Google Cloud 콘솔에 등록한 값과 문자 하나까지 같아야 합니다.** 이제 등록할 주소는 로그인용 `OFFICE_AUTH_REDIRECT_URI` 하나뿐입니다(`/api/auth/callback`). 콘솔 등록값과 실제 접속 도메인이 다르면 `redirect_uri_mismatch`로 실패합니다.
+- 로그인은 매번 `approval_prompt=force`로 리프레시 토큰을 다시 받습니다. 이게 빠지면 토큰이 회수됐을 때 재로그인으로도 복구되지 않습니다.
 - 토큰은 Postgres에 저장되므로 재배포해도 재인증이 필요 없습니다. DB를 비우면 재인증해야 합니다.
 - 스코프는 `gmail.readonly` 하나입니다. 발송은 불가합니다.
 
@@ -76,7 +80,8 @@
 
 **리스크**
 - **과금이 즉시 발생합니다.** 먼저 사용량 한도를 걸어두세요.
-- `INSTAGRAM_TOON_MODEL` 기본값 `gpt-5.6-luna`, 백엔드 `summary-model` 기본값도 동일합니다. **이 모델 이름이 실제 계정에서 사용 가능한지 확인되지 않았습니다.** 없는 모델이면 404가 납니다. 최소 비용 확인 방법: 모델 목록 API로 존재 여부부터 확인.
+- `INSTAGRAM_TOON_MODEL`은 이제 **로컬 CLI 전용**입니다. 대시보드의 인스타툰은 Kotlin으로 옮겨져 `office.ai-news.summary-model`을 씁니다.
+- **컷 이미지 생성은 키가 따로입니다.** `office.llm.image-api-key`(Google AI Studio)를 별도로 채워야 하며, `open-ai-api-key`로 폴백하지 않습니다 — 그 값이 다른 제공자 키일 때 그대로 구글로 나가는 걸 막기 위해서입니다. 장당 과금(기본 `imagen-4.0-fast-generate-001` $0.02)이라 하루 상한(`office.llm.image-daily-limit`)이 걸려 있습니다.
 - Kotlin(`office.ai-news.open-ai-api-key`)과 Python(`OPENAI_API_KEY`)이 키를 따로 읽습니다. 양쪽 다 채워야 합니다.
 - 워커와 백엔드는 엔드포인트를 따로 읽습니다. 워커는 `OPENAI_BASE_URL`, 백엔드 AI 뉴스 요약은 `office.ai-news.open-ai-base-url`입니다. DeepSeek으로 완전히 옮기려면 양쪽 다 바꿔야 합니다.
 - 제공자를 바꾸면 `office.ai-news.input-price-per-million-usd` / `output-...`도 같이 바꾸세요. 기본값이 OpenAI 단가라서 AI 운영 센터의 비용 집계가 틀어집니다.
