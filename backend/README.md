@@ -15,6 +15,19 @@ KPI·업무·승인·실행 이력은 `data/office-dashboard/operations.json`에
 
 인스타툰 결과는 `data/instagram-toons/`에 JSON으로 저장됩니다. `config/.env`에 `OPENAI_API_KEY`와 `INSTAGRAM_TOON_MODEL=gpt-5.6-luna`를 설정하세요. Luna는 API 무료 티어에서 지원되지 않으므로 API 결제 계정이 필요합니다.
 
+## 구성
+
+`src/main/kotlin/com/backoffice/dashboard/`에 패키지 구분 없이 파일 단위로 모여 있습니다.
+
+- `DashboardApplication.kt`: Spring Boot 엔트리포인트
+- `DashboardController.kt`: `/api/**` 전체를 처리하는 REST 컨트롤러
+- `*Service.kt`: 도메인별 서비스 — `AiNewsService`, `AiNewsBriefingService`, `AiOperationsService`, `ContentStudioService`, `InstagramToonService`, `TopicDraftService`, `GmailService`, `TossService`, `SlackService`, `AuthService`, `OperationsService`, `PythonAutomationService`
+- `AutomationRepository.kt`, `JsonDocumentStore.kt`: 데이터 저장(JDBC/Postgres, 일부는 JSON 파일)
+- `SessionAuthFilter.kt`, `WorkerAuthFilter.kt`, `CorsConfiguration.kt`, `ApiErrorHandler.kt`: 인증·CORS·에러 처리
+- `src/main/resources/db/migration/`: Flyway 마이그레이션 V1~V6 (스키마 생성 → tasks 테이블 → feature 테이블 → 네이밍/soft-delete 정리)
+
+Python 자동화 실행은 `PythonAutomationService`가 `automation/worker_api.py`(Railway 워커)에 HTTP로 위임합니다.
+
 ## 실행
 
 ```powershell

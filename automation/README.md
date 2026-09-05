@@ -4,11 +4,15 @@
 
 ## 구성
 
-- `main.py`: 블로그 자동화 워커 시작점
-- `jobs/`: 키워드 수집, 콘텐츠 생성, 포스팅, 스케줄링과 인스타툰 생성 작업
-- `scripts/`: 수동 실행용 명령
-- `shared/`: 재사용 가능한 로깅과 데이터베이스 도구
+- `main.py`: CLI 진입점. `--mode {api|scheduler|keyword|content|posting|all}`로 실행
+- `worker_api.py`: FastAPI 서버. Railway에서 백엔드(Kotlin `PythonAutomationService`)가 `POST /run`으로 원격 트리거할 때 사용(`X-Worker-Api-Key` 헤더 인증, 동시 실행은 락으로 방지)
+- `jobs/`: 키워드 수집(`keyword_collector.py`), 콘텐츠 생성(`content_generator.py`), 포스팅(`blog_poster.py`), 스케줄링(`scheduler.py`), 인스타툰 생성(`instagram_toon/generator.py`)
+- `scripts/run_instagram_toon.py`: 인스타툰 생성 수동 실행 CLI
+- `shared/`: 화면·특정 업무에 종속되지 않는 재사용 유틸 — `logger.py`, `backend_client.py`(백엔드 API 호출), `usage.py`(토큰 사용량 집계)
+- `tests/`: `backend_client`, `settings_contract`, `usage` 단위 테스트
 - `requirements.txt`: Python 의존성
+
+결과와 상태는 화면이 아니라 API/DB로 전달합니다. 예를 들어 `content` 모드는 토큰 사용량 한 줄을 stdout으로만 출력하고, 백오피스가 이 줄을 파싱해 읽습니다.
 
 ## 설치
 
