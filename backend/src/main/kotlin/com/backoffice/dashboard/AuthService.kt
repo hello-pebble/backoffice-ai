@@ -40,7 +40,10 @@ class AuthService(
         require(properties.auth.allowedEmails.isNotEmpty()) { "로그인 허용 이메일(office.auth.allowed-emails)이 설정되지 않았습니다." }
         val state = randomToken()
         states[state] = true
-        return flow.newAuthorizationUrl().setRedirectUri(properties.auth.redirectUri).setState(state).build()
+        // approval_prompt=force: 구글은 최초 동의에서만 리프레시 토큰을 준다. 강제하지 않으면
+        // 저장된 토큰이 회수·만료됐을 때(invalid_grant) 재로그인해도 새 토큰을 못 받아 영영 복구되지 않는다.
+        return flow.newAuthorizationUrl().setRedirectUri(properties.auth.redirectUri)
+            .setState(state).setApprovalPrompt("force").build()
     }
 
     /** 인증 코드를 세션으로 바꾸고, 응답에 리프레시 토큰이 있으면 Gmail 자격증명도 저장한다. */
