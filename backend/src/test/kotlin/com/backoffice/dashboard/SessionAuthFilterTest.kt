@@ -94,6 +94,8 @@ class SessionAuthFilterTest {
             request("/api/topic-drafts/abc/notify", method = "POST", session = demoToken),
             // 읽음 표시와 모양이 비슷하지만 허용 목록에 없다.
             request("/api/ai-news/abc/delete", method = "PATCH", session = demoToken),
+            // 접두 규칙이 메서드까지 본다. 이미지 조회는 GET 만 연다.
+            request("/api/toon-images/7", method = "DELETE", session = demoToken),
         ).forEach { request ->
             val chain = mock(FilterChain::class.java)
             val response = MockHttpServletResponse()
@@ -114,6 +116,9 @@ class SessionAuthFilterTest {
             request("/api/dashboard", session = demoToken),
             // 인스타툰은 모델만 부르고 문서 저장소에 남긴다(파이썬 프로세스 없음).
             request("/api/instagram-toons", method = "POST", session = demoToken),
+            // 이미지 생성·조회. 통과는 라우팅만이고 실제 격리는 toon_image.owner 가 한다.
+            request("/api/instagram-toons/abc/images", method = "POST", session = demoToken),
+            request("/api/toon-images/7", session = demoToken),
             // id 가 가변이라 접두·접미로 판정한다.
             request("/api/ai-news/abc/read", method = "PATCH", session = demoToken),
         ).forEach { request ->

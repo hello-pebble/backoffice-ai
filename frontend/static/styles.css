@@ -194,6 +194,7 @@ textarea{min-height:110px;resize:vertical;line-height:1.55}
 .content-output-grid details{background:var(--paper);border-radius:4px;padding:10px 12px}
 .content-output-grid summary{font-size:13px;font-weight:500;cursor:pointer}
 .content-output-grid pre{white-space:pre-wrap;font:12px/1.6 var(--font);color:var(--muted);margin:8px 0 0}
+.toon-cut{width:100%;border-radius:4px;display:block;margin:8px 0 0}
 
 /* 페이지 이동 */
 .pager{display:flex;align-items:center;justify-content:center;gap:12px;border-top:1px solid var(--rule);padding-top:14px;margin-top:2px}

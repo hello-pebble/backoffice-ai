@@ -93,8 +93,23 @@ function renderSlack(status){const target=$('slack-status');if(!status){target.c
  const options=SLACK_STATE.channels.map(c=>`<option value="${esc(c.id)}" ${c.id===status.channelId?'selected':''}>#${esc(c.name)}</option>`).join('');
  target.innerHTML=`<span class="tag done">연결됨</span><b>${esc(status.teamName||'워크스페이스')}</b><span>알림 채널</span><select id="slack-channel">${options||'<option value="">채널 목록을 불러오세요</option>'}</select><button class="light" id="slack-channel-load">채널 목록 새로고침</button>${status.channelName?`<span class="muted">현재 #${esc(status.channelName)}</span>`:'<span class="muted">채널을 고르면 알림이 시작됩니다.</span>'}`;
 }
+// 컷 이미지: 완료면 그림, 생성중이면 자리표시자, 실패면 사유. 바이트는 목록에 안 실려 오고 img 가 따로 가져간다.
+// 같은 컷을 다시 만들면 id 가 그대로라 완료 시각을 붙여 캐시를 깬다.
+function panelImage(toon,panel){
+ const s=(toon.images||[]).find(i=>i.panel_number===panel.number);
+ if(!s)return '';
+ if(s.status==='완료')return `<img class="toon-cut" loading="lazy" alt="${panel.number}컷 이미지" src="/api/toon-images/${s.id}?v=${encodeURIComponent(s.completed_at||'')}">`;
+ if(s.status==='실패')return `<p class="meta">이미지 실패: ${esc(s.error||'사유가 기록되지 않았습니다.')}</p>`;
+ return '<p class="meta">이미지 생성 중…</p>';
+}
+function toonImageButton(x){
+ const images=x.images||[];
+ if(images.some(i=>i.status==='생성중'))return '<button class="light" disabled>이미지 생성 중…</button>';
+ const label=images.length&&images.every(i=>i.status==='완료')?'컷 이미지 다시 생성':'컷 이미지 생성';
+ return `<button class="light" data-toon-image="${esc(x.id)}">${label}</button>`;
+}
 // 컷은 접어 둔다. 8컷이면 카드 하나가 화면을 다 먹는다.
-function renderToons(items){renderPaged('toon-list',items,'toon-list','아직 생성된 인스타툰 대본이 없습니다.',x=>`<article class="content-package"><b>${esc(x.title)}</b><p>${esc(x.tone)} · ${x.panel_count}컷 · ${esc(x.model||'')} · ${esc(x.created_at.replace('T',' ').slice(0,16))}</p><p class="hook">${esc(x.caption)}</p><p class="meta">${(x.hashtags||[]).map(t=>esc(t)).join(' ')}</p><div class="content-output-grid">${x.panels.map(p=>`<details><summary>${p.number}컷 · ${esc(p.scene)}</summary><pre>대사: ${esc(p.dialogue)}\n나레이션: ${esc(p.narration)}\n\n이미지 프롬프트\n${esc(p.image_prompt)}</pre></details>`).join('')}</div></article>`)}
+function renderToons(items){renderPaged('toon-list',items,'toon-list','아직 생성된 인스타툰 대본이 없습니다.',x=>`<article class="content-package"><div class="topic-draft-head"><div><b>${esc(x.title)}</b><p>${esc(x.tone)} · ${x.panel_count}컷 · ${esc(x.model||'')} · ${esc(x.created_at.replace('T',' ').slice(0,16))}</p></div>${toonImageButton(x)}</div><p class="hook">${esc(x.caption)}</p><p class="meta">${(x.hashtags||[]).map(t=>esc(t)).join(' ')}</p><div class="content-output-grid">${x.panels.map(p=>`<details><summary>${p.number}컷 · ${esc(p.scene)}</summary>${panelImage(x,p)}<pre>대사: ${esc(p.dialogue)}\n나레이션: ${esc(p.narration)}\n\n이미지 프롬프트\n${esc(p.image_prompt)}</pre></details>`).join('')}</div></article>`)}
 
 const j=u=>fetch(u).then(r=>r.ok?(r.status===204?null:r.json()):null).catch(()=>null);
 // 응답을 다 모아 기다리지 않고 도착하는 대로 그린다. 외부 API(Gmail·토스)를 부르는
@@ -111,7 +126,7 @@ function load(){
   paint('/api/topic-drafts',renderTopicDrafts),
   paint('/api/slack/status',renderSlack,true),
   paint('/api/instagram-toons',renderToons),
- ]);
+ ]).then(pollToons);
 }
 async function newsRead(id){await fetch(`/api/ai-news/${id}/read`,{method:'PATCH'}).then(r=>r.json()).then(renderNews)}
 $('refresh').onclick=load;
@@ -137,6 +152,27 @@ $('toon-form').onsubmit=async e=>{
  }catch(error){alert(error.message)}
  finally{button.disabled=false;button.textContent='대본과 이미지 프롬프트 생성'}
 };
+$('toon-list').addEventListener('click',async e=>{
+ const button=e.target.closest('[data-toon-image]');if(!button)return;
+ button.disabled=true;
+ try{
+  const r=await fetch(`/api/instagram-toons/${encodeURIComponent(button.dataset.toonImage)}/images`,{method:'POST'});
+  if(!r.ok){const error=await r.json().catch(()=>({}));throw new Error(error.detail||'이미지 생성을 시작하지 못했습니다.')}
+  renderToons(await j('/api/instagram-toons')||[]);
+  pollToons();
+ }catch(error){alert(error.message);button.disabled=false}
+});
+// 생성중인 컷이 남아 있는 동안만 3초마다 다시 그린다. 끝나면 스스로 멈추고 운영 센터를 한 번 갱신한다.
+let toonTimer=null;
+function pollToons(){
+ clearTimeout(toonTimer);
+ toonTimer=setTimeout(async()=>{
+  const items=await j('/api/instagram-toons');if(!items)return;
+  renderToons(items);
+  if(items.some(x=>(x.images||[]).some(i=>i.status==='생성중')))pollToons();
+  else{const ops=await j('/api/ai-operations');if(ops)renderAiOperations(ops)}
+ },3000);
+}
 $('login-button').onclick=async()=>{const r=await fetch('/api/auth/login');if(!r.ok){const err=await r.json().catch(()=>({}));alert(err.detail||'로그인 주소를 가져오지 못했습니다.');return}location.href=(await r.json()).url};
 $('logout-button').onclick=async()=>{await fetch('/api/auth/logout',{method:'POST'});location.reload()};
 // 로그인 없이 둘러보기. 서버가 데모 세션 쿠키를 내려주면 새로고침만으로 평소 화면 흐름을 탄다.

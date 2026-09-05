@@ -103,6 +103,38 @@ class LlmClient(private val properties: OfficeProperties, private val objectMapp
         }
     }
 
+    /**
+     * 이미지 한 장. Imagen 은 chat 이 아니라 :predict 라 주소도 헤더도 다르지만,
+     * 타임아웃·재시도·오류 문구 정규화는 send() 를 그대로 탄다.
+     * send() 가 4xx 를 재시도하지 않는 것이 여기서는 오히려 맞다 — 안전 필터 거부가 4xx 다.
+     */
+    fun image(prompt: String, model: String): LlmImage {
+        val key = properties.llm.imageApiKey
+        // 폴백하지 않는다. open-ai-api-key 가 구글 키가 아닐 수 있고, 그걸 구글에 보내면 키가 샌다.
+        require(key.isNotBlank()) { "이미지 API 키(office.llm.image-api-key)를 설정하세요." }
+        val body = objectMapper.writeValueAsString(
+            mapOf(
+                "instances" to listOf(mapOf("prompt" to prompt)),
+                "parameters" to mapOf("sampleCount" to 1, "aspectRatio" to "1:1"),
+            )
+        )
+        val request = HttpRequest.newBuilder(URI("${properties.llm.imageBaseUrl.trim().trimEnd('/')}/models/$model:predict"))
+            .timeout(Duration.ofSeconds(properties.llm.requestTimeoutSeconds))
+            .header("Content-Type", "application/json")
+            // Bearer 가 아니다. Chat 경로와 인증 헤더가 다르다.
+            .header("x-goog-api-key", key)
+            .POST(HttpRequest.BodyPublishers.ofString(body))
+            .build()
+        val prediction = objectMapper.readTree(send(request)).path("predictions").firstOrNull()
+            ?: throw IllegalStateException("이미지 응답이 비어 있습니다. 프롬프트가 안전 필터에 걸렸을 수 있습니다.")
+        val encoded = prediction.path("bytesBase64Encoded").asText("")
+        if (encoded.isBlank()) throw IllegalStateException("이미지 응답에 그림이 들어 있지 않습니다.")
+        return LlmImage(java.util.Base64.getDecoder().decode(encoded), prediction.path("mimeType").asText("image/png"))
+    }
+
+    /** 이미지는 토큰이 아니라 장당 단가라 estimateCostUsd 와 단위가 다르다. */
+    fun imageCostUsd(count: Int): Double = properties.llm.imagePriceUsd * count
+
     private fun costOf(target: LlmTarget, inputTokens: Long, outputTokens: Long): Double =
         if (target.useOllama) 0.0 else estimateCostUsd(target.model, inputTokens, outputTokens)
 
@@ -149,5 +181,6 @@ class LlmClient(private val properties: OfficeProperties, private val objectMapp
     }
 }
 
+data class LlmImage(val bytes: ByteArray, val mimeType: String)
 data class LlmTarget(val useOllama: Boolean, val endpoint: String, val model: String, val vendor: String)
 data class LlmResponse(val content: String, val inputTokens: Long, val outputTokens: Long, val target: LlmTarget, val costUsd: Double)

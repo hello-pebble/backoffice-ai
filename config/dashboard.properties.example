@@ -14,6 +14,18 @@ office.auth.cookie-secure=false
 office.auth.cookie-same-site=Lax
 app.cors.allowed-origins=http://127.0.0.1:8765
 
+# 컷 이미지 생성(Google Imagen). 키가 비어 있으면 이미지 생성만 막히고 나머지는 그대로 동작합니다.
+# open-ai-api-key 를 재사용하지 않습니다. 그 값이 다른 제공자(NVIDIA NIM 등) 키일 수 있고,
+# 그대로 구글에 보내면 키가 유출됩니다. 같은 구글 키를 쓰려면 아래에 직접 적으세요.
+office.llm.image-api-key=
+office.llm.image-model=imagen-4.0-fast-generate-001
+# 장당 단가(USD). fast 0.02 / 기본 imagen-4.0-generate-001 은 0.04 입니다.
+office.llm.image-price-usd=0.02
+# 주인 계정의 하루 이미지 상한. 장당 실제 비용이 나가므로 연타 사고를 막습니다.
+office.llm.image-daily-limit=30
+# 이 시간이 지나도 "생성중"이면 백엔드가 재시작된 것으로 보고 실패로 표시합니다.
+office.llm.image-stale-minutes=10
+
 # 데모 모드. 로그인 화면의 "데모로 둘러보기" 버튼을 켭니다.
 # 데모는 문서 키에 demo: 를 붙여 실데이터와 분리되고, 허용 목록 밖의 경로는 403 으로 막힙니다.
 # 그 격리를 세션 필터가 걸기 때문에 office.auth.enabled=true 가 아니면 데모 시작이 거부됩니다.
@@ -23,6 +35,9 @@ office.demo.session-hours=2
 office.demo.llm-daily-limit=30
 # 방문자 한 명이 쓸 수 있는 횟수. 인스타툰·주제 초안·핵심 요약을 합쳐서 셉니다.
 office.demo.llm-session-limit=5
+# 데모 이미지 상한. 주인 상한과 카운터가 따로라 서로를 막지 않습니다.
+office.demo.image-daily-limit=8
+office.demo.image-session-limit=4
 
 # 토스증권 Open API. 자격증명을 받은 뒤 enabled=true 로 바꾸세요.
 office.toss.enabled=false

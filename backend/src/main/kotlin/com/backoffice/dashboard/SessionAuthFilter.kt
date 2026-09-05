@@ -67,6 +67,10 @@ class SessionAuthFilter(
         val uri = request.requestURI
         // 읽음 표시는 id 가 가변이라 접두·접미로 본다. 나머지는 정확히 일치하는 것만 통과시킨다.
         if (request.method == "PATCH" && uri.startsWith("/api/ai-news/") && uri.endsWith("/read")) return true
+        // 아래 둘은 id 가 가변이라 접두·접미로 본다. 통과는 "부를 수 있다"이지 "볼 수 있다"가 아니다.
+        // 실제 격리는 toon_image.owner 조건이 한다(DemoContext 로 서버가 정한다).
+        if (request.method == "GET" && uri.startsWith("/api/toon-images/")) return true
+        if (request.method == "POST" && uri.startsWith("/api/instagram-toons/") && uri.endsWith("/images")) return true
         return "${request.method} $uri" in DEMO_ALLOWED
     }
 

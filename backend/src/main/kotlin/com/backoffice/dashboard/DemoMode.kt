@@ -26,6 +26,9 @@ object DemoContext {
 
     /** 세션별 실행 횟수를 세는 키. 데모가 아니면 null. */
     fun sessionKey(): String? = state.get()
+
+    /** 문서 저장소를 안 타는 테이블(toon_image)의 격리 값. 서버가 정하고 클라이언트는 못 바꾼다. */
+    fun owner(): String = if (isDemo()) "demo" else "owner"
 }
 
 /**
@@ -39,6 +42,35 @@ object DemoBudget {
     private var day: LocalDate = LocalDate.now()
     private var usedToday = 0
     private val usedBySession = mutableMapOf<String, Int>()
+    private var imagesToday = 0
+    private var demoImagesToday = 0
+    private val demoImagesBySession = mutableMapOf<String, Int>()
+
+    /**
+     * 이미지 상한. 장수를 통째로 받아 4컷·8컷이 반쯤 통과하지 않게 한다.
+     * sessionKey 가 null 이면 주인 요청이라 전체 상한만 본다. 주인에게도 상한이 필요한 이유는
+     * 이미지가 장당 실제 돈이고 지금은 버튼 연타를 막을 게 아무것도 없어서다.
+     * 데모 카운터를 따로 두는 이유는, 합치면 주인이 몇 장 쓴 순간 데모가 통째로 막히기 때문이다.
+     */
+    @Synchronized
+    fun consumeImages(sessionKey: String?, count: Int, dailyLimit: Int, demoDailyLimit: Int, demoSessionLimit: Int) {
+        rollDay()
+        require(imagesToday + count <= dailyLimit) {
+            "오늘 만들 수 있는 이미지 한도($dailyLimit 장)를 모두 썼습니다. 내일 다시 시도해 주세요."
+        }
+        if (sessionKey != null) {
+            require(demoImagesToday + count <= demoDailyLimit) {
+                "오늘 데모에서 만들 수 있는 이미지 한도($demoDailyLimit 장)를 모두 썼습니다. 내일 다시 시도해 주세요."
+            }
+            val used = demoImagesBySession[sessionKey] ?: 0
+            require(used + count <= demoSessionLimit) {
+                "이 데모 세션의 이미지 한도($demoSessionLimit 장)를 모두 썼습니다. 다른 기능을 둘러봐 주세요."
+            }
+            demoImagesBySession[sessionKey] = used + count
+            demoImagesToday += count
+        }
+        imagesToday += count
+    }
 
     @Synchronized
     fun consume(sessionKey: String, dailyLimit: Int, sessionLimit: Int) {
@@ -58,14 +90,20 @@ object DemoBudget {
         val today = LocalDate.now()
         if (today == day) return
         day = today
-        usedToday = 0
-        usedBySession.clear()
+        clearCounters()
     }
 
     @Synchronized
     fun reset() {
         day = LocalDate.now()
+        clearCounters()
+    }
+
+    private fun clearCounters() {
         usedToday = 0
         usedBySession.clear()
+        imagesToday = 0
+        demoImagesToday = 0
+        demoImagesBySession.clear()
     }
 }

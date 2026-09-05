@@ -20,6 +20,8 @@ class InstagramToonService(
     private val aiOperationsService: AiOperationsService,
     private val llm: LlmClient,
     private val documents: JsonDocumentStore,
+    private val images: ToonImageRepository,
+    private val properties: OfficeProperties,
 ) {
     fun generate(request: CreateInstagramToonRequest): InstagramToon {
         val startedAt = System.nanoTime()
@@ -58,7 +60,7 @@ class InstagramToonService(
             createdAt = OffsetDateTime.now().toString(),
             model = target.model,
         )
-        save((listOf(toon) + list()).take(20))
+        save((listOf(toon) + stored()).take(20))
         aiOperationsService.record(
             agent = "인스타툰 대본 에이전트",
             provider = target.vendor,
@@ -73,7 +75,19 @@ class InstagramToonService(
         return toon
     }
 
-    fun list(): List<InstagramToon> = documents.readList(KEY, InstagramToon::class.java)
+    /** 화면용. 컷 이미지 상태를 붙여 준다. */
+    fun list(): List<InstagramToon> {
+        val stored = stored()
+        if (stored.isEmpty()) return stored
+        val byToon = images.statusOfAll(stored.map { it.id }, DemoContext.owner(), properties.llm.imageStaleMinutes)
+        return stored.map { it.copy(images = byToon[it.id].orEmpty()) }
+    }
+
+    /**
+     * 저장용. 이미지 상태가 붙지 않은 원본이다.
+     * 저장할 때 list() 를 쓰면 붙여 준 상태가 문서에 그대로 굳어 다음 읽기에서 실제 상태를 덮는다.
+     */
+    private fun stored(): List<InstagramToon> = documents.readList(KEY, InstagramToon::class.java)
 
     private fun save(items: List<InstagramToon>) = documents.write(KEY, items)
 
@@ -149,6 +163,8 @@ data class InstagramToon(
     val panels: List<InstagramToonPanel>,
     @JsonProperty("created_at") val createdAt: String,
     val model: String? = null,
+    // 컷 이미지 상태는 toon_image 테이블이 원본이다. 읽을 때 붙이고 문서에는 빈 값으로 들어간다.
+    val images: List<ToonImageStatus> = emptyList(),
 )
 
 data class InstagramToonPanel(

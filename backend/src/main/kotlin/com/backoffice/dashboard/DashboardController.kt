@@ -9,6 +9,7 @@ import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
+import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.PatchMapping
 import org.springframework.web.bind.annotation.RequestBody
@@ -25,6 +26,7 @@ class DashboardController(
     private val automationService: PythonAutomationService,
     private val operationsService: OperationsService,
     private val instagramToonService: InstagramToonService,
+    private val toonImageService: ToonImageService,
     private val aiNewsService: AiNewsService,
     private val aiNewsBriefingService: AiNewsBriefingService,
     private val aiOperationsService: AiOperationsService,
@@ -89,6 +91,26 @@ class DashboardController(
     } catch (error: IllegalArgumentException) {
         throw ResponseStatusException(HttpStatus.BAD_REQUEST, error.message)
     }
+
+    /** 이미지는 1~3분 걸려 기다리지 않는다. 잡아 두고 바로 202, 진행 상태는 목록 조회로 본다. */
+    @PostMapping("/instagram-toons/{id}/images")
+    @ResponseStatus(HttpStatus.ACCEPTED)
+    fun createToonImages(@PathVariable id: String): List<ToonImageStatus> = try {
+        toonImageService.enqueue(id)
+    } catch (error: IllegalArgumentException) {
+        // 예산 초과도 여기로 온다. 화면은 detail 문구를 그대로 보여 준다.
+        throw ResponseStatusException(HttpStatus.BAD_REQUEST, error.message)
+    }
+
+    /** 바이트는 목록 JSON 에 싣지 않는다. 브라우저가 img 태그로 따로 가져간다. */
+    @GetMapping("/toon-images/{id}")
+    fun toonImage(@PathVariable id: Long): ResponseEntity<ByteArray> =
+        toonImageService.bytes(id)?.let { (mimeType, bytes) ->
+            ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_TYPE, mimeType)
+                .header(HttpHeaders.CACHE_CONTROL, "private, max-age=31536000, immutable")
+                .body(bytes)
+        } ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "이미지를 찾을 수 없습니다.")
 
     @PostMapping("/instagram-toons")
     fun createInstagramToon(@RequestBody request: CreateInstagramToonRequest): InstagramToon = try {

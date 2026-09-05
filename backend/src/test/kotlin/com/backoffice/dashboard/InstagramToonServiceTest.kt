@@ -18,7 +18,8 @@ class InstagramToonServiceTest {
     private val documents = FakeDocumentStore()
     private val llm = mock(LlmClient::class.java)
     private val operations = mock(AiOperationsService::class.java)
-    private val service = InstagramToonService(ObjectMapper(), operations, llm, documents)
+    private val toonImages = mock(ToonImageRepository::class.java)
+    private val service = InstagramToonService(ObjectMapper(), operations, llm, documents, toonImages, OfficeProperties())
 
     private val request = CreateInstagramToonRequest(episode = "출근길에 우산을 두고 온 날 이야기", panelCount = 4)
 

@@ -22,6 +22,9 @@ data class OfficeProperties(
         val llmDailyLimit: Int = 30,
         // 한 방문자가 하루치를 다 쓰지 못하게 한다. 인스타툰·주제 초안·핵심 요약을 합쳐서 센다.
         val llmSessionLimit: Int = 5,
+        // 이미지는 주인 상한과 카운터를 나눈다. 합치면 주인이 몇 장 쓴 순간 데모가 통째로 막힌다.
+        val imageDailyLimit: Int = 8,
+        val imageSessionLimit: Int = 4,
     )
     data class Toss(
         val enabled: Boolean = false,
@@ -53,6 +56,19 @@ data class OfficeProperties(
         val retryDelayMillis: Long = 500,
         // 모델별 100만 토큰 단가. "모델명=입력단가,출력단가" 형식이고 없으면 office.ai-news 기본 단가를 쓴다.
         val prices: Map<String, String> = emptyMap(),
+        // 이미지 생성(Google Imagen). 키를 open-ai-api-key 와 나눠 둔 이유:
+        // 그 값이 NVIDIA NIM 같은 다른 제공자 키일 수 있고, 그걸 구글로 보내면 그대로 유출이다.
+        // 같은 구글 키를 쓰려면 여기에 명시적으로 적어라. 비어 있으면 폴백하지 않고 거부한다.
+        val imageApiKey: String = "",
+        val imageBaseUrl: String = "https://generativelanguage.googleapis.com/v1beta",
+        val imageModel: String = "imagen-4.0-fast-generate-001",
+        // 장당 단가(USD). 토큰 단가표와 단위가 달라 따로 둔다. 쓰는 모델이 하나라 값 하나로 충분하다.
+        val imagePriceUsd: Double = 0.02,
+        val imageMaxBytes: Int = 6_000_000,
+        // 이 시간이 지나도 생성중이면 백엔드가 재시작된 것이다. 화면에 실패로 보이고 다시 시도할 수 있다.
+        val imageStaleMinutes: Long = 10,
+        // 주인 계정의 하루 이미지 상한. 이미지는 장당 실제 돈이 나가고 버튼 연타를 막을 게 없다.
+        val imageDailyLimit: Int = 30,
     )
     data class Auth(
         // false 면 인증 없이 모든 API 가 열린다. 로컬 개발 전용.
