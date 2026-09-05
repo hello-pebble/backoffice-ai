@@ -28,6 +28,7 @@ class AuthService(
     private val properties: OfficeProperties,
     private val documents: JsonDocumentStore,
     private val tokenStore: PostgresDataStoreFactory,
+    private val objectMapper: com.fasterxml.jackson.databind.ObjectMapper,
 ) {
     private val transport = NetHttpTransport()
     private val jsonFactory = GsonFactory.getDefaultInstance()
@@ -66,6 +67,38 @@ class AuthService(
         return LoginResult(token, null, email.lowercase())
     }
 
+    /**
+     * 가짜 로그인. 예약된 이메일로 진짜 세션을 하나 만든다. 그 뒤로는 앱 전체가 로그인 상태로 동작하고,
+     * SessionAuthFilter 가 이 이메일을 보고 데모 격리(문서 키 네임스페이스 + 허용 목록)를 건다.
+     */
+    @Synchronized
+    fun startDemoSession(): String {
+        require(properties.demo.enabled) { "데모 모드가 꺼져 있습니다." }
+        // 인증이 꺼져 있으면 세션 필터가 아예 돌지 않아 격리도 걸리지 않는다. 그 환경에서는 데모를 열지 않는다.
+        require(properties.auth.enabled) { "인증이 꺼진 환경에서는 데모를 열 수 없습니다." }
+        seedDemoDocuments()
+        val token = randomToken()
+        val expiresAt = OffsetDateTime.now().plusHours(properties.demo.sessionHours)
+        save(activeSessions() + AuthSession(hash(token), DemoContext.EMAIL, expiresAt.toString()))
+        return token
+    }
+
+    /**
+     * 데모 문서가 없을 때만 씨앗을 넣는다. 방문자가 만든 초안·실행 이력은 그대로 쌓여 보여 줄 게 많아진다.
+     * 씨앗을 고쳐 다시 넣고 싶으면 delete from app_document where document_key like 'demo:%' 한 줄이면 된다.
+     * 이 함수는 공개 경로(필터 밖)에서 돌아 DemoContext 가 꺼져 있으므로 접두사를 직접 붙인다.
+     */
+    private fun seedDemoDocuments() = DEMO_SEED_KEYS.forEach { key ->
+        val target = DemoContext.KEY_PREFIX + key
+        if (documents.read(target, com.fasterxml.jackson.databind.JsonNode::class.java) != null) return@forEach
+        val json = javaClass.getResourceAsStream("/demo/$key.json")?.use { it.readBytes().toString(Charsets.UTF_8) }
+            ?: return@forEach
+        // 씨앗의 날짜는 넣는 날 기준으로 채운다. 고정 날짜로 두면 다음 날 방문자에게 "오늘 실행 0" 으로 보인다.
+        val today = java.time.LocalDate.now()
+        val filled = json.replace("{{today}}", today.toString()).replace("{{today-4}}", today.minusDays(4).toString())
+        documents.write(target, objectMapper.readTree(filled))
+    }
+
     /** 요청 쿠키의 세션이 살아 있으면 이메일을, 아니면 null 을 돌려준다. */
     fun emailOf(token: String?): String? {
         if (token.isNullOrBlank()) return null
@@ -96,9 +129,13 @@ class AuthService(
             .filter { runCatching { OffsetDateTime.parse(it.expiresAt).isAfter(now) }.getOrDefault(false) }
     }
 
-    private fun save(sessions: List<AuthSession>) = documents.write("auth-sessions", sessions.takeLast(50))
+    // 데모 방문자도 이 목록에 세션을 남긴다. 50 이면 방문 50회 만에 주인 세션이 밀려나 로그아웃된다.
+    private fun save(sessions: List<AuthSession>) = documents.write("auth-sessions", sessions.takeLast(500))
 
     companion object {
+        /** 데모 보드의 시작 내용. 실데이터를 가공해 넣어 둔 resources 의 demo 폴더 JSON 파일 이름과 같다. */
+        private val DEMO_SEED_KEYS = listOf("ai-news", "ai-news-briefing", "topic-drafts", "content-packages", "ai-operations")
+
         fun hash(token: String): String =
             MessageDigest.getInstance("SHA-256").digest(token.toByteArray()).joinToString("") { "%02x".format(it) }
 

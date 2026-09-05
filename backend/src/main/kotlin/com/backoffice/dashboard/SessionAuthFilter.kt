@@ -23,6 +23,8 @@ class SessionAuthFilter(
         "/api/auth/login",
         "/api/auth/callback",
         "/api/slack/callback",
+        // 데모 시작은 로그인 전에 눌러야 하므로 열어 둔다. office.demo.enabled 가 꺼져 있으면 서비스가 막는다.
+        "/api/auth/demo",
     )
 
     override fun shouldNotFilter(request: HttpServletRequest): Boolean =
@@ -34,17 +36,62 @@ class SessionAuthFilter(
             request.requestURI in openPaths
 
     override fun doFilterInternal(request: HttpServletRequest, response: HttpServletResponse, chain: FilterChain) {
-        if (authService.emailOf(sessionToken(request)) == null) {
-            response.status = HttpStatus.UNAUTHORIZED.value()
-            response.contentType = "application/json;charset=UTF-8"
-            response.writer.write("""{"detail":"로그인이 필요합니다."}""")
-            return
+        val token = sessionToken(request)
+        val email = authService.emailOf(token)
+        if (email == null) return deny(response, HttpStatus.UNAUTHORIZED, "로그인이 필요합니다.")
+        if (email != DemoContext.EMAIL) return chain.doFilter(request, response)
+        // 데모는 허용 목록에 있는 것만 부를 수 있다. 새 엔드포인트가 생겨도 데모에는 닫혀 있다.
+        if (!demoAllows(request)) {
+            return deny(
+                response,
+                HttpStatus.FORBIDDEN,
+                "데모에서는 쓸 수 없는 기능입니다. Gmail·Slack 같은 개인 계정 연동과 실제 자동화 실행은 관리자 로그인에서만 동작합니다.",
+            )
         }
-        chain.doFilter(request, response)
+        // 세션 토큰을 그대로 두면 로그에 샐 수 있어 해시를 센다. 세션별 실행 횟수 카운트에만 쓴다.
+        DemoContext.set(AuthService.hash(token!!))
+        try {
+            chain.doFilter(request, response)
+        } finally {
+            DemoContext.clear()
+        }
+    }
+
+    private fun deny(response: HttpServletResponse, status: HttpStatus, detail: String) {
+        response.status = status.value()
+        response.contentType = "application/json;charset=UTF-8"
+        response.writer.write("""{"detail":"$detail"}""")
+    }
+
+    private fun demoAllows(request: HttpServletRequest): Boolean {
+        val uri = request.requestURI
+        // 읽음 표시는 id 가 가변이라 접두·접미로 본다. 나머지는 정확히 일치하는 것만 통과시킨다.
+        if (request.method == "PATCH" && uri.startsWith("/api/ai-news/") && uri.endsWith("/read")) return true
+        return "${request.method} $uri" in DEMO_ALLOWED
     }
 
     companion object {
         const val COOKIE = "office_session"
+
+        /**
+         * 데모가 부를 수 있는 전부. 읽기와 AI 생성·수집만 연다(생성은 진짜로 실행된다).
+         * 여기 없는 것은 막힌다: 자동화 워커, 인스타툰, 업무·승인, Slack 연결, 초안 Slack 재알림.
+         */
+        private val DEMO_ALLOWED = setOf(
+            "GET /api/auth/me",
+            "POST /api/auth/logout",
+            "GET /api/dashboard",
+            "GET /api/content-packages",
+            "POST /api/content-packages",
+            "GET /api/ai-news",
+            "POST /api/ai-news/refresh",
+            "GET /api/ai-news/briefing",
+            "POST /api/ai-news/briefing/refresh",
+            "GET /api/ai-operations",
+            "GET /api/topic-drafts",
+            "POST /api/topic-drafts/refresh",
+            "GET /api/slack/status",
+        )
 
         /** 화면이 로그인 여부를 즉시 알기 위한 표시용 쿠키. 인증 판단에는 쓰지 않는다. */
         const val HINT_COOKIE = "office_session_hint"

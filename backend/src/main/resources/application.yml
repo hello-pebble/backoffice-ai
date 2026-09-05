@@ -40,6 +40,11 @@ office:
     client-secret: ${OFFICE_SLACK_CLIENT_SECRET:}
     redirect-uri: ${OFFICE_SLACK_REDIRECT_URI:http://127.0.0.1:8765/api/slack/callback}
     review-base-url: ${OFFICE_SLACK_REVIEW_BASE_URL:http://127.0.0.1:8765}
+  demo:
+    enabled: ${OFFICE_DEMO_ENABLED:false}
+    session-hours: ${OFFICE_DEMO_SESSION_HOURS:2}
+    llm-daily-limit: ${OFFICE_DEMO_LLM_DAILY_LIMIT:30}
+    llm-session-limit: ${OFFICE_DEMO_LLM_SESSION_LIMIT:3}
   toss:
     enabled: ${OFFICE_TOSS_ENABLED:false}
     base-url: ${OFFICE_TOSS_BASE_URL:https://openapi.tossinvest.com}

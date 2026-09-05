@@ -16,8 +16,11 @@
                 <h1>로그인</h1>
                 <p id="login-message">허용된 Google 계정으로 로그인하세요.</p>
                 <button id="login-button">Google 계정으로 로그인</button>
+                <button class="light" id="demo-button">데모로 둘러보기</button>
             </div>
         </div>
+
+        <div id="demo-banner" hidden>데모 모드 · 데이터는 가공된 예시입니다. AI 생성과 소식 수집은 실제로 동작합니다.</div>
 
         <aside>
             <div class="wordmark">STUDIO<span>withAI</span></div>
@@ -86,6 +89,7 @@
                     <button class="light" id="automation-content-run">워커 실행 테스트</button>
                 </div>
                 <p class="muted">원본 하나를 선택한 채널의 초안으로 묶어 저장합니다.</p>
+                <p class="demo-note">워커 실행은 서버에서 별도 프로세스를 띄우므로 데모에서는 막혀 있습니다. 패키지 생성은 그대로 동작합니다.</p>
                 <form id="content-package-form" class="studio-form">
                     <label>원본 콘텐츠
                         <textarea name="source" required placeholder="블로그 초안, 회의 메모, 아이디어 등 원본 콘텐츠를 입력하세요."></textarea>
@@ -112,6 +116,7 @@
                     <strong id="mail-count" class="mail-count"></strong>
                 </div>
                 <p class="muted">스팸, 홍보, 소셜을 제외한 안 읽은 메일입니다.</p>
+                <p class="demo-note">메일은 개인 Google 계정 연동이 필요해 데모에서는 예시 데이터를 보여 줍니다.</p>
                 <div id="mail-list" class="empty">Google 로그인 후 표시됩니다.</div>
                 <a class="text-link" href="https://mail.google.com" target="_blank" rel="noreferrer">Gmail에서 열기</a>
             </section>
@@ -143,6 +148,7 @@
                     <button class="light" id="slack-connect">Slack 연결</button>
                 </div>
                 <p class="muted">검토 대본 초안이 준비되면 대본 전문이 아니라 알림과 검토 링크만 이 채널로 보냅니다.</p>
+                <p class="demo-note">Slack은 개인 워크스페이스 로그인이 필요해 데모에서는 연결할 수 없습니다.</p>
                 <div id="slack-status" class="empty">Slack 연결 상태를 확인하는 중입니다.</div>
             </section>
         </main>

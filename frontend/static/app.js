@@ -120,11 +120,22 @@ $('topic-draft-refresh').onclick=async()=>{const b=$('topic-draft-refresh');b.di
 $('topic-draft-list').addEventListener('click',async e=>{const button=e.target.closest('button[data-notify-id]');if(!button)return;button.disabled=true;button.textContent='재시도 중…';try{const r=await fetch(`/api/topic-drafts/${button.dataset.notifyId}/notify`,{method:'POST'});if(!r.ok){const error=await r.json().catch(()=>({}));throw new Error(error.detail||'Slack 알림 재시도에 실패했습니다.')}const draft=await r.json();if(draft.slackStatus!=='SENT')alert(`Slack 알림을 보내지 못했습니다: ${draft.slackError||'웹훅이 설정되지 않았습니다.'}`);renderTopicDrafts(await j('/api/topic-drafts')||[])}catch(error){alert(error.message);button.disabled=false;button.textContent='Slack 알림 재시도'}});
 $('login-button').onclick=async()=>{const r=await fetch('/api/auth/login');if(!r.ok){const err=await r.json().catch(()=>({}));alert(err.detail||'로그인 주소를 가져오지 못했습니다.');return}location.href=(await r.json()).url};
 $('logout-button').onclick=async()=>{await fetch('/api/auth/logout',{method:'POST'});location.reload()};
+// 로그인 없이 둘러보기. 서버가 데모 세션 쿠키를 내려주면 새로고침만으로 평소 화면 흐름을 탄다.
+$('demo-button').onclick=async()=>{const r=await fetch('/api/auth/demo',{method:'POST'});if(!r.ok){alert((await r.json().catch(()=>({}))).detail||'데모를 시작하지 못했습니다.');return}location.reload()};
 $('slack-connect').onclick=async()=>{const r=await fetch('/api/slack/connect');if(!r.ok){const err=await r.json().catch(()=>({}));alert(err.detail||'Slack 연결 주소를 가져오지 못했습니다.');return}location.href=(await r.json()).url};
 $('slack-status').addEventListener('click',async e=>{if(!e.target.closest('#slack-channel-load'))return;const channels=await j('/api/slack/channels');if(!channels){alert('채널 목록을 가져오지 못했습니다. 봇 권한을 확인하세요.');return}SLACK_STATE.channels=channels;renderSlack(await j('/api/slack/status'))});
 $('slack-status').addEventListener('change',async e=>{if(e.target.id!=='slack-channel'||!e.target.value)return;const r=await fetch('/api/slack/channel',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({channelId:e.target.value})});if(!r.ok){const err=await r.json().catch(()=>({}));alert(err.detail||'채널을 저장하지 못했습니다.');return}renderSlack(await r.json())});
 // 세션이 없으면 대시보드 데이터를 부르지 않는다. 401 이 줄줄이 뜨는 걸 막는다.
-async function start(){const me=await fetch('/api/auth/me').catch(()=>null);if(!me||!me.ok){showLogin();return}hideLogin();$('profile-email').textContent=(await me.json()).email;load()}
+async function start(){
+ const me=await fetch('/api/auth/me').catch(()=>null);
+ if(!me||!me.ok){showLogin();return}
+ hideLogin();
+ const info=await me.json();
+ $('profile-email').textContent=info.email;
+ // 데모는 배너를 띄우고, 개인 계정이 필요한 칸의 안내 문구를 켠다(CSS 가 body.demo 로 판단한다).
+ if(info.demo){document.body.classList.add('demo');$('demo-banner').hidden=false;$('profile-email').textContent='데모 사용자'}
+ load();
+}
 start();
 
 

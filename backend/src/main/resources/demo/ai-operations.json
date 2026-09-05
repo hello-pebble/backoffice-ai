@@ -1,0 +1,153 @@
+[
+  {
+    "id": "bad67b54-a46c-4df9-86e6-d1deb03ac878",
+    "agent": "콘텐츠 재활용 에이전트",
+    "error": null,
+    "model": "초안 템플릿",
+    "tools": [
+      "원본 콘텐츠 분석",
+      "인스타툰",
+      "유튜브 쇼츠",
+      "카드뉴스"
+    ],
+    "status": "성공",
+    "provider": "콘텐츠 스튜디오",
+    "durationMs": 9,
+    "executedAt": "{{today}}T20:25:13.572249900+09:00",
+    "inputTokens": 0,
+    "outputTokens": 0,
+    "resultPreview": "인스타툰 · 유튜브 쇼츠 · 카드뉴스 초안 3개를 만들었습니다.",
+    "estimatedCostUsd": 0.0
+  },
+  {
+    "id": "ff89758c-4e4a-438f-9a72-17f3f800f1a3",
+    "agent": "주제 대본 초안 에이전트",
+    "error": null,
+    "model": "gemini-3.5-flash",
+    "tools": [
+      "AI 뉴스 수집",
+      "generativelanguage.googleapis.com Chat Completions",
+      "Slack 알림 · SENT"
+    ],
+    "status": "성공",
+    "provider": "generativelanguage.googleapis.com",
+    "durationMs": 28464,
+    "executedAt": "{{today}}T20:24:50.671662200+09:00",
+    "inputTokens": 223,
+    "outputTokens": 369,
+    "resultPreview": "구글 딥마인드의 가장 진보된 기상 AI, WeatherNext 3 공개 · 검토 대기 초안을 저장했습니다.",
+    "estimatedCostUsd": 0.00048740000000000003
+  },
+  {
+    "id": "a890a65a-d531-4d59-8b3a-26cc625450c4",
+    "agent": "AI 뉴스 브리핑 에이전트",
+    "error": null,
+    "model": "gemini-3.5-flash",
+    "tools": [
+      "AI 뉴스 저장소",
+      "generativelanguage.googleapis.com Chat Completions"
+    ],
+    "status": "성공",
+    "provider": "generativelanguage.googleapis.com",
+    "durationMs": 38040,
+    "executedAt": "{{today}}T20:24:39.915922500+09:00",
+    "inputTokens": 392,
+    "outputTokens": 526,
+    "resultPreview": "구글 딥마인드가 Gemini 3.5 Transcribe를 출시하여 한층 더 지능적인 음성-텍스트 변환(STT) 기능을 지원합니다. 사용자는 향상된 성능의 음성 인식 솔루션을 직접 활용할 수 있게 되었습니다. / 허깅페이스가 Sentence Transformers를 기반으로 멀티 벡터 임베딩 모델을 훈련하고 미세조정(Finetuning)하는 방법론을 다룹니다. 본문의 상세한 설명은 없으나 관련 모델 구축의 핵심 가이드를 제시합니",
+    "estimatedCostUsd": 0.0007095999999999999
+  },
+  {
+    "id": "4d8aec28-a5e1-4232-ba60-240fd1fbc532",
+    "agent": "AI 뉴스 수집 에이전트",
+    "error": null,
+    "model": "모델 사용 안 함",
+    "tools": [
+      "RSS · OpenAI",
+      "RSS · Google DeepMind",
+      "RSS · Hugging Face"
+    ],
+    "status": "성공",
+    "provider": "외부 공식 소식원",
+    "durationMs": 1346,
+    "executedAt": "{{today}}T20:24:23.553501100+09:00",
+    "inputTokens": 0,
+    "outputTokens": 0,
+    "resultPreview": "공식 AI 소식 71건을 확인했습니다.",
+    "estimatedCostUsd": 0.0
+  },
+  {
+    "id": "7aba0973-c0b0-4e7f-a4ca-7c705ed673a9",
+    "agent": "AI 뉴스 브리핑 에이전트",
+    "error": null,
+    "model": "gemini-3.5-flash",
+    "tools": [
+      "AI 뉴스 저장소",
+      "generativelanguage.googleapis.com Chat Completions"
+    ],
+    "status": "성공",
+    "provider": "generativelanguage.googleapis.com",
+    "durationMs": 35451,
+    "executedAt": "{{today}}T19:57:06.431954300+09:00",
+    "inputTokens": 392,
+    "outputTokens": 514,
+    "resultPreview": "구글 딥마인드가 한 단계 높은 지능형 음성-문자 변환 기술을 제공하는 'Gemini 3.5 Transcribe'를 출시했습니다. 이를 통해 사용자는 한층 더 고도화된 음성 인식 텍스트 전사 서비스를 경험할 수 있습니다. / 허깅페이스가 Sentence Transformers 기술을 기반으로 다중 벡터 임베딩 모델을 훈련시키고 미세조정(Finetuning)하는 방법을 공개했습니다. / 허깅페이스가 AI 서비스에서 사용자의 요청을",
+    "estimatedCostUsd": 0.0006952
+  },
+  {
+    "id": "a8b34ffe-ae25-420a-8aaf-4b859c729c71",
+    "agent": "주제 대본 초안 에이전트",
+    "error": null,
+    "model": "llama3.2:1b",
+    "tools": [
+      "AI 뉴스 수집",
+      "Ollama 로컬 API",
+      "Slack 알림 · SENT"
+    ],
+    "status": "성공",
+    "provider": "Ollama 로컬",
+    "durationMs": 8388,
+    "executedAt": "{{today-4}}T16:31:30.959077500+09:00",
+    "inputTokens": 225,
+    "outputTokens": 49,
+    "resultPreview": "Gemini Omni 1.1 Flash · 검토 대기 초안을 저장했습니다.",
+    "estimatedCostUsd": 0.0
+  },
+  {
+    "id": "f619705b-ef2b-4484-a6dc-5002f276bfc9",
+    "agent": "AI 뉴스 수집 에이전트",
+    "error": null,
+    "model": "모델 사용 안 함",
+    "tools": [
+      "RSS · OpenAI",
+      "RSS · Google DeepMind",
+      "RSS · Hugging Face"
+    ],
+    "status": "성공",
+    "provider": "외부 공식 소식원",
+    "durationMs": 1821,
+    "executedAt": "{{today-4}}T16:31:24.392695300+09:00",
+    "inputTokens": 0,
+    "outputTokens": 0,
+    "resultPreview": "공식 AI 소식 60건을 확인했습니다.",
+    "estimatedCostUsd": 0.0
+  },
+  {
+    "id": "06188b56-1fdc-4fcb-8d38-6621110c4e01",
+    "agent": "AI 뉴스 수집 에이전트",
+    "error": null,
+    "model": "모델 사용 안 함",
+    "tools": [
+      "RSS · OpenAI",
+      "RSS · Google DeepMind",
+      "RSS · Hugging Face"
+    ],
+    "status": "성공",
+    "provider": "외부 공식 소식원",
+    "durationMs": 2008,
+    "executedAt": "{{today-4}}T16:30:43.775899700+09:00",
+    "inputTokens": 0,
+    "outputTokens": 0,
+    "resultPreview": "공식 AI 소식 60건을 확인했습니다.",
+    "estimatedCostUsd": 0.0
+  }
+]

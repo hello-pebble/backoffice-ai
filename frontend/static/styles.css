@@ -90,6 +90,14 @@ button[disabled]{opacity:.45;cursor:default}
 .ai-metrics span{display:block;font-size:12px;color:var(--muted)}
 .ai-metrics span b{color:var(--ok);font-weight:600}
 
+/* 데모 모드: 안내는 마크업에 늘 두고 body.demo 일 때만 보여 준다 */
+#demo-banner{position:fixed;inset:0 0 auto 0;z-index:20;background:var(--signal);color:#fff;padding:8px 20px;font-size:13px;font-weight:500}
+#demo-banner[hidden]{display:none}
+body.demo aside,body.demo main{margin-top:33px}
+.demo-note{display:none;font-size:13px;color:var(--signal);margin:8px 0 0;max-width:72ch}
+body.demo .demo-note{display:block}
+body.demo #slack-connect,body.demo #slack-status,body.demo #automation-content-run{display:none}
+
 /* 필터와 모델별 표 */
 .ai-filters{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
 .ai-filters select{width:auto;margin:0;padding:6px 28px 6px 10px;font-size:13px}

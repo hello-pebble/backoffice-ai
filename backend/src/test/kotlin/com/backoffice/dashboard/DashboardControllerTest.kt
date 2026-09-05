@@ -1,8 +1,11 @@
 package com.backoffice.dashboard
 
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito.doThrow
 import org.mockito.Mockito.mock
+import org.mockito.Mockito.never
+import org.mockito.Mockito.verify
 import org.mockito.Mockito.`when`
 import org.springframework.http.HttpStatus
 import org.springframework.jdbc.core.JdbcTemplate
@@ -46,6 +49,33 @@ class DashboardControllerTest {
     )
 
     private fun status(block: () -> Any?) = assertFailsWith<ResponseStatusException> { block() }.statusCode
+
+    @AfterEach
+    fun clearDemoContext() = DemoContext.clear()
+
+    @Test
+    fun `데모 대시보드는 주인 자격증명으로 구글·토스를 부르지 않는다`() {
+        val toss = mock(TossService::class.java)
+        val demoController = DashboardController(
+            gmailService = gmail, tossService = toss,
+            automationService = mock(PythonAutomationService::class.java),
+            operationsService = mock(OperationsService::class.java),
+            instagramToonService = toons, aiNewsService = mock(AiNewsService::class.java),
+            aiNewsBriefingService = briefing, aiOperationsService = mock(AiOperationsService::class.java),
+            contentStudioService = contentStudio, topicDraftService = topicDrafts,
+            authService = auth, slackService = slack, properties = OfficeProperties(),
+            automationRepository = mock(AutomationRepository::class.java), jdbc = jdbc,
+        )
+        DemoContext.set("세션-해시")
+
+        val response = demoController.dashboard()
+
+        verify(gmail, never()).overview()
+        verify(toss, never()).overview()
+        // 발신자가 실제 주소면 주인 메일함이 샌 것이다.
+        assertTrue(response.gmail.messages.all { it.from.endsWith("@example.com") }, "데모 메일은 예시 주소여야 한다")
+        assertTrue(response.generatedAt.isNotBlank())
+    }
 
     @Test
     fun `허용하지 않은 자동화 모드는 400 이다`() {

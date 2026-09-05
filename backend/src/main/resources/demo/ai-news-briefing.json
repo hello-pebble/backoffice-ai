@@ -1,0 +1,56 @@
+{
+  "news": [
+    {
+      "id": "ac6eb9276806c2f8127da583e949efb9c54aa88e5f88837b0aefed9cb8f0d861",
+      "url": "https://deepmind.google/blog/intelligent-transcription-with-gemini-3-5-transcribe/",
+      "read": false,
+      "title": "Intelligent transcription with Gemini 3.5 Transcribe",
+      "source": "Google DeepMind",
+      "summary": "Now you can get more intelligent speech-to-text transcription with Gemini 3.5 Transcribe.",
+      "category": "모델",
+      "collectedAt": "{{today-4}}T16:30:43.223420700+09:00",
+      "publishedAt": "Wed, 26 Aug 2026 17:01:00 +0000"
+    },
+    {
+      "id": "17177c100c9150295f9a783a1f42c5ab7f67d636429664b84dc83f06cd3f4a18",
+      "url": "https://huggingface.co/blog/train-multi-vector-encoder",
+      "read": false,
+      "title": "Training and Finetuning Multi-Vector Embedding Models with Sentence Transformers",
+      "source": "Hugging Face",
+      "summary": "",
+      "category": "모델",
+      "collectedAt": "{{today-4}}T16:30:43.759734900+09:00",
+      "publishedAt": "Wed, 26 Aug 2026 00:00:00 GMT"
+    },
+    {
+      "id": "969cdff003616d877728734c0df8eb69cbcac3e36aeedc2eef49af940b3cc6b5",
+      "url": "https://huggingface.co/blog/ibm-research/model-routing-is-simple-until-it-isnt",
+      "read": false,
+      "title": "Model Routing Is Simple. Until It Isn’t.",
+      "source": "Hugging Face",
+      "summary": "",
+      "category": "모델",
+      "collectedAt": "{{today-4}}T16:30:43.764333900+09:00",
+      "publishedAt": "Wed, 15 Jul 2026 17:27:01 GMT"
+    }
+  ],
+  "items": [
+    {
+      "id": "ac6eb9276806c2f8127da583e949efb9c54aa88e5f88837b0aefed9cb8f0d861",
+      "impact": "고성능 음성 인식 기술을 비즈니스에 도입함으로써 회의록 자동 작성 및 고객 콜센터 분석의 효율성을 극대화할 수 있습니다.",
+      "summary": "구글 딥마인드가 Gemini 3.5 Transcribe를 출시하여 한층 더 지능적인 음성-텍스트 변환(STT) 기능을 지원합니다. 사용자는 향상된 성능의 음성 인식 솔루션을 직접 활용할 수 있게 되었습니다."
+    },
+    {
+      "id": "17177c100c9150295f9a783a1f42c5ab7f67d636429664b84dc83f06cd3f4a18",
+      "impact": "기업 내부 검색 엔진이나 추천 시스템의 의미론적 매칭 정확도를 개선하여 고객 경험을 높이는 데 기여합니다.",
+      "summary": "허깅페이스가 Sentence Transformers를 기반으로 멀티 벡터 임베딩 모델을 훈련하고 미세조정(Finetuning)하는 방법론을 다룹니다. 본문의 상세한 설명은 없으나 관련 모델 구축의 핵심 가이드를 제시합니다."
+    },
+    {
+      "id": "969cdff003616d877728734c0df8eb69cbcac3e36aeedc2eef49af940b3cc6b5",
+      "impact": "다양한 오픈소스 및 상용 LLM을 혼용하여 최적의 가성비를 내는 멀티 모델 운영 아키텍처를 설계하는 데 참고할 수 있습니다.",
+      "summary": "허깅페이스는 AI 모델 라우팅이 보기보다 복잡한 작업이 될 수 있음을 지적합니다. 각 작업의 성격에 맞춰 가장 적절한 AI 모델로 요청을 배분하는 시스템 디자인의 중요성을 환기시킵니다."
+    }
+  ],
+  "model": "gemini-3.5-flash",
+  "generatedAt": "{{today}}T20:24:39.910111400+09:00"
+}

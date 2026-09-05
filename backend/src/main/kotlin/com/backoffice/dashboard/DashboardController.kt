@@ -36,8 +36,11 @@ class DashboardController(
     private val automationRepository: AutomationRepository,
     private val jdbc: JdbcTemplate,
 ) {
+    // 구글·토스를 주인 자격증명으로 부르는 유일한 경로라 데모는 여기서 갈라야 한다.
+    // 서비스 안에서 가르면 GmailService 의 60초 성공 캐시를 타고 주인 메일이 샐 수 있다.
     @GetMapping("/dashboard")
-    fun dashboard() = DashboardResponse(
+    fun dashboard() = if (DemoContext.isDemo()) DEMO_DASHBOARD.copy(generatedAt = OffsetDateTime.now().toString())
+    else DashboardResponse(
         generatedAt = OffsetDateTime.now().toString(),
         gmail = gmailService.overview(),
         stocks = tossService.overview(),
@@ -203,7 +206,19 @@ class DashboardController(
     fun me(request: HttpServletRequest): Map<String, Any> {
         val email = authService.emailOf(SessionAuthFilter.sessionToken(request))
             ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "로그인이 필요합니다.")
-        return mapOf("email" to email)
+        return mapOf("email" to email, "demo" to (email == DemoContext.EMAIL))
+    }
+
+    /** 로그인 없이 둘러보기. 예약 이메일로 세션을 만들어 화면이 로그인 상태로 동작하게 한다. */
+    @PostMapping("/auth/demo")
+    fun demoLogin(): ResponseEntity<Map<String, Boolean>> = try {
+        val token = authService.startDemoSession()
+        ResponseEntity.ok()
+            .header(HttpHeaders.SET_COOKIE, sessionCookie(token, maxAgeSeconds = null).toString())
+            .header(HttpHeaders.SET_COOKIE, hintCookie("1", maxAgeSeconds = null).toString())
+            .body(mapOf("ok" to true))
+    } catch (error: IllegalArgumentException) {
+        throw ResponseStatusException(HttpStatus.CONFLICT, error.message)
     }
 
     @PostMapping("/auth/logout")
@@ -267,6 +282,33 @@ class DashboardController(
         slackService.selectChannel(request.channelId)
     } catch (error: IllegalArgumentException) {
         throw ResponseStatusException(HttpStatus.BAD_REQUEST, error.message)
+    }
+
+    companion object {
+        /**
+         * 데모의 메일·종목 칸. 코드에 박아 둔다 — 주인 계정을 부르지 않고, 가릴 것도 없다.
+         * 발신자는 전부 example.com 이고 시세는 고정값이다(토스 자격증명을 쓰지 않는다).
+         */
+        private val DEMO_DASHBOARD = DashboardResponse(
+            generatedAt = "",
+            gmail = GmailOverview(
+                connected = true,
+                unread = 3,
+                messages = listOf(
+                    MailItem("collab@example.com", "9월 브랜디드 콘텐츠 협업 문의", "Fri, 5 Sep 2026 09:12:00 +0900"),
+                    MailItem("news@example.com", "이번 주 AI 도구 업데이트 모음", "Fri, 5 Sep 2026 08:40:00 +0900"),
+                    MailItem("billing@example.com", "8월 이용 내역 안내", "Thu, 4 Sep 2026 18:02:00 +0900"),
+                ),
+            ),
+            stocks = StockOverview(
+                connected = true,
+                items = listOf(
+                    StockItem("005930", "삼성전자", "257000", "KRW", null),
+                    StockItem("000660", "SK하이닉스", "1662000", "KRW", null),
+                    StockItem("373220", "LG에너지솔루션", "360500", "KRW", null),
+                ),
+            ),
+        )
     }
 }
 

@@ -36,6 +36,9 @@ class LlmClient(private val properties: OfficeProperties, private val objectMapp
      * 정규화한 사유를 담은 IllegalStateException 으로 올린다.
      */
     fun chat(system: String, user: String, jsonMode: Boolean = true): LlmResponse {
+        // 데모의 모델 호출은 여기 한 곳을 반드시 지난다. 한도를 넘으면 IllegalArgumentException 이 나가고
+        // 컨트롤러의 기존 catch 가 400 {"detail":…} 로 바꿔 화면 문구까지 그대로 이어진다.
+        DemoContext.sessionKey()?.let { DemoBudget.consume(it, properties.demo.llmDailyLimit, properties.demo.llmSessionLimit) }
         val target = target()
         val key = properties.aiNews.openAiApiKey.ifBlank { System.getenv("OPENAI_API_KEY") ?: "" }
         if (!target.useOllama) require(key.isNotBlank()) { "OpenAI API 키가 설정되지 않았습니다. config/dashboard.properties에 office.ai-news.open-ai-api-key를 설정하거나 office.ai-news.summary-provider=ollama로 변경하세요." }

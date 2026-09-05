@@ -35,7 +35,8 @@ class TopicDraftService(
         val news = aiNewsService.refresh()
         val newsCandidate = selectCandidate(news, load().map { it.sourceId }.toSet(), now)?.let { DraftSource.fromNews(it, now) }
         // 우선순위·검색량이 높은 키워드 하나만 후보로 본다. 이미 automationRepository 가 그 순서로 정렬해 준다.
-        val keyword = automationRepository.unusedKeywords(1).firstOrNull()
+        // 데모는 실제 automation_keyword 를 읽지도, used=true 로 바꾸지도 않는다(뉴스 후보만 쓴다).
+        val keyword = if (DemoContext.isDemo()) null else automationRepository.unusedKeywords(1).firstOrNull()
         val keywordCandidate = keyword?.let { DraftSource.fromKeyword(it) }
         val candidate = listOfNotNull(newsCandidate, keywordCandidate).maxByOrNull { it.priorityScore }
             ?: throw IllegalArgumentException("초안으로 만들 새 주제가 없습니다. 소식원이나 키워드가 갱신된 뒤 다시 시도하세요.")

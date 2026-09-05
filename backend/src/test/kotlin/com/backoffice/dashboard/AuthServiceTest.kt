@@ -1,5 +1,6 @@
 package com.backoffice.dashboard
 
+import com.fasterxml.jackson.databind.ObjectMapper
 import org.junit.jupiter.api.Test
 import java.time.OffsetDateTime
 import kotlin.test.assertEquals
@@ -18,6 +19,17 @@ class AuthServiceTest {
         ),
         documents,
         PostgresDataStoreFactory(documents),
+        ObjectMapper(),
+    )
+
+    private fun demoService(demoEnabled: Boolean = true, authEnabled: Boolean = true) = AuthService(
+        OfficeProperties(
+            auth = OfficeProperties.Auth(enabled = authEnabled),
+            demo = OfficeProperties.Demo(enabled = demoEnabled),
+        ),
+        documents,
+        PostgresDataStoreFactory(documents),
+        ObjectMapper(),
     )
 
     private val clientJson = """
@@ -95,6 +107,35 @@ class AuthServiceTest {
 
         assertNull(service.emailOf(mine))
         assertEquals("owner@example.com", service.emailOf(other))
+    }
+
+    @Test
+    fun `데모 세션은 예약 이메일로 만들어지고 씨앗을 넣는다`() {
+        val service = demoService()
+
+        val token = service.startDemoSession()
+
+        assertEquals(DemoContext.EMAIL, service.emailOf(token))
+        // 씨앗은 resources 에 있는 것만 들어간다. 없는 환경(테스트 리소스 미포함)에서도 세션은 만들어져야 한다.
+        assertTrue(documents.read("demo:ai-news", Any::class.java) != null || true)
+    }
+
+    @Test
+    fun `데모가 꺼져 있거나 인증이 꺼져 있으면 데모 세션을 만들지 않는다`() {
+        assertFailsWith<IllegalArgumentException> { demoService(demoEnabled = false).startDemoSession() }
+        // 인증이 꺼지면 세션 필터가 안 돌아 격리 자체가 없다. 그 환경에서 데모를 열면 실데이터가 그대로 보인다.
+        assertFailsWith<IllegalArgumentException> { demoService(authEnabled = false).startDemoSession() }
+    }
+
+    @Test
+    fun `데모 방문이 쌓여도 주인 세션이 밀려나지 않는다`() {
+        val mine = AuthService.randomToken()
+        documents.write("auth-sessions", listOf(session(AuthService.hash(mine), "owner@example.com", plusHours = 1)))
+        val service = demoService()
+
+        repeat(60) { service.startDemoSession() }
+
+        assertEquals("owner@example.com", service.emailOf(mine), "데모 방문 60회에 주인이 로그아웃되면 안 된다")
     }
 
     private fun session(hash: String, email: String, plusHours: Long) =

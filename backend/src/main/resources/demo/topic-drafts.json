@@ -1,0 +1,26 @@
+[
+  {
+    "id": "cb289671-5090-40ef-b235-83e5a47db78a",
+    "hook": "구글 딥마인드가 가장 진보되고 정확한 글로벌 기상 AI 모델을 공개했습니다.",
+    "model": "gemini-3.5-flash",
+    "title": "구글 딥마인드의 가장 진보된 기상 AI, WeatherNext 3 공개",
+    "script": "구글 딥마인드가 새로운 글로벌 기상 예측 AI 모델을 공개했습니다. 바로 구글 딥마인드의 가장 진보되고 정확한 글로벌 기상 AI 모델인 '웨더넥스트 3(WeatherNext 3)'입니다. 이번에 소개된 웨더넥스트 3는 구글 딥마인드가 선보인 기상 예측 기술 중에서도 가장 뛰어난 기술력을 자랑하는 모델로 알려졌습니다. 글로벌 기상 예측 분야에서 가장 진보된 성능을 보여주는 기상 AI 모델이며, 정확도 면에서도 가장 뛰어난 성능을 갖추고 있다는 점이 공식 발표를 통해 확인되었습니다. 구글 딥마인드의 공식 블로그에 따르면, 웨더넥스트 3는 전 세계 기상 데이터를 다루는 기술에 있어 기존보다 훨씬 더 진보하고 정확한 예측을 제공하는 글로벌 기상 AI 모델로 자리매김하고 있습니다. 더 자세한 정보나 세부적인 기술 소개가 궁금하시다면 구글 딥마인드 공식 블로그의 'Introducing WeatherNext 3, our most advanced and accurate global weather AI model' 소개 글을 직접 확인해 보시는 것을 추천해 드립니다. 가장 진보되고 정확한 글로벌 기상 AI 모델, 구글 딥마인드의 웨더넥스트 3 소식이었습니다.",
+    "source": "Google DeepMind",
+    "category": "모델",
+    "hashtags": [
+      "구글딥마인드",
+      "WeatherNext3",
+      "기상AI",
+      "인공지능"
+    ],
+    "sourceId": "2b0379511ea0511400ff6f8480f093b7e89048fa43741253f88f912d5b472fb1",
+    "createdAt": "{{today}}T20:24:22.206786+09:00",
+    "reviewUrl": "#topic-draft-cb289671-5090-40ef-b235-83e5a47db78a",
+    "sourceUrl": "https://deepmind.google/blog/introducing-weathernext-3-our-most-advanced-and-accurate-global-weather-ai-model/",
+    "slackError": null,
+    "slackStatus": "NOT_CONFIGURED",
+    "sourceTitle": "Introducing WeatherNext 3, our most advanced and accurate global weather AI model",
+    "reviewStatus": "REVIEW_PENDING",
+    "priorityScore": 6.984034418762022
+  }
+]
