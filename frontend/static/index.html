@@ -51,18 +51,23 @@
                     <h2>AI 운영 센터</h2>
                     <button class="light" id="ai-operations-refresh">실행 이력 새로고침</button>
                 </div>
-                <p class="muted">오늘 실행된 에이전트의 토큰, 예상 비용, 사용 도구, 결과입니다. 로컬 모델은 API 비용이 0으로 표시됩니다.</p>
+                <p class="muted">선택한 기간과 조건에 맞는 에이전트 실행의 토큰, 예상 비용, 사용 도구, 결과입니다. 로컬 모델은 API 비용이 0으로 표시됩니다.</p>
+                <div class="ai-filters">
+                    <select id="ai-filter-agent" aria-label="기능"><option value="">모든 기능</option></select>
+                    <select id="ai-filter-model" aria-label="모델"><option value="">모든 모델</option></select>
+                    <select id="ai-filter-range" aria-label="기간"><option value="today">오늘</option><option value="7d">최근 7일</option></select>
+                </div>
                 <div class="ai-metrics">
                     <article>
-                        <p>오늘 실행</p>
+                        <p>실행</p>
                         <strong id="ai-run-count">—</strong>
                         <span>성공 <b id="ai-success-count">—</b>건</span>
                     </article>
-                    <article><p>사용 토큰</p><strong id="ai-token-count">—</strong><span>입력과 출력 합계</span></article>
+                    <article><p>토큰</p><strong id="ai-token-count">—</strong><span>입력 / 출력</span></article>
                     <article><p>예상 API 비용</p><strong id="ai-cost">—</strong><span>USD 추정치</span></article>
-                    <article><p>총 작업 시간</p><strong id="ai-duration">—</strong><span>오늘 실행 시간 합계</span></article>
+                    <article><p>총 작업 시간</p><strong id="ai-duration">—</strong><span>선택한 기간 합계</span></article>
                 </div>
-                <div id="ai-model-list" class="tool-list"></div>
+                <table id="ai-model-matrix" class="model-matrix" hidden></table>
                 <div id="ai-operation-list" class="empty">아직 AI 실행 이력이 없습니다.</div>
             </section>
 

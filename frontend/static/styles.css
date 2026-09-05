@@ -90,6 +90,15 @@ button[disabled]{opacity:.45;cursor:default}
 .ai-metrics span{display:block;font-size:12px;color:var(--muted)}
 .ai-metrics span b{color:var(--ok);font-weight:600}
 
+/* 필터와 모델별 표 */
+.ai-filters{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.ai-filters select{width:auto;margin:0;padding:6px 28px 6px 10px;font-size:13px}
+.model-matrix{width:100%;border-collapse:collapse;margin-top:16px;font-size:13px}
+.model-matrix th,.model-matrix td{padding:8px 0 8px 14px;text-align:right;white-space:nowrap;border-top:1px solid var(--rule)}
+.model-matrix th{font-size:12px;font-weight:500;color:var(--muted);border-top:0}
+.model-matrix th:first-child,.model-matrix td:first-child{text-align:left;padding-left:0}
+.model-matrix tbody tr:last-child td{border-bottom:1px solid var(--rule)}
+
 /* 칩과 상태 */
 .tool-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px}
 .tool-list:empty{display:none}
@@ -206,6 +215,7 @@ textarea{min-height:110px;resize:vertical;line-height:1.55}
   .ai-metrics article+article{border-top:1px solid var(--rule)}
   .studio-fields,.content-output-grid{grid-template-columns:1fr}
   .heading{flex-direction:column;align-items:flex-start}
+  .model-matrix{display:block;overflow-x:auto}
 }
 @media(max-width:1180px){main{grid-template-columns:1fr}}
 @media(max-width:860px){aside{display:none}main{margin:0;width:100%;padding:24px 16px 64px}.card{padding:0 16px 20px;height:auto;overflow:visible}.heading{position:static;padding-top:18px}header{align-items:flex-start;flex-direction:column}h1{font-size:22px}}

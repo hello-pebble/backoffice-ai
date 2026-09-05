@@ -41,7 +41,43 @@ function renderNews(items){renderPaged('news-list',items,'','아직 수집된 AI
 
 function renderBriefing(data){const target=$('briefing-list');if(!data){target.className='briefing empty';target.textContent='아직 생성된 핵심 브리핑이 없습니다.';return}const byId=Object.fromEntries(data.news.map(x=>[x.id,x]));target.className='briefing';target.innerHTML=data.items.map((x,i)=>`<article class="briefing-card"><span class="tag">핵심 ${i+1}</span><b>${esc(byId[x.id]?.title||'AI 소식')}</b><p>${esc(x.summary)}</p><strong>업무 영향 · ${esc(x.impact)}</strong></article>`).join('')}
 const dur=ms=>ms>=60000?`${Math.floor(ms/60000)}분 ${Math.round(ms%60000/1000)}초`:`${(Number(ms)/1000).toFixed(1)}초`;
-function renderAiOperations(data){$('ai-run-count').textContent=data.totalRuns;$('ai-success-count').textContent=data.successfulRuns;$('ai-token-count').textContent=new Intl.NumberFormat('ko-KR').format(data.totalTokens);$('ai-cost').textContent=`$${Number(data.estimatedCostUsd).toFixed(4)}`;$('ai-duration').textContent=dur(data.totalDurationMs||0);$('ai-model-list').innerHTML=(data.models||[]).map(m=>`<span>${esc(m.model)} · ${m.runs}회</span>`).join('');renderPaged('ai-operation-list',data.items,'ai-operation-list','아직 AI 실행 이력이 없습니다.',x=>`<article class="ai-operation"><div class="ai-operation-head"><div><span class="tag ${x.status==='성공'?'done':'late'}">${esc(x.status)}</span><b>${esc(x.agent)}</b><span>${esc(x.executedAt.replace('T',' ').slice(0,16))} · ${dur(x.durationMs)}</span></div><strong>$${Number(x.estimatedCostUsd).toFixed(4)}</strong></div><p><b>${esc(x.provider)}</b> · ${esc(x.model)} · 토큰 ${new Intl.NumberFormat('ko-KR').format(x.inputTokens+x.outputTokens)}</p><div class="tool-list">${x.tools.map(tool=>`<span>${esc(tool)}</span>`).join('')}</div><small>${esc(x.error||x.resultPreview||'결과 정보가 없습니다.')}</small></article>`)}
+// AI 운영 센터: 서버는 보관 중인 실행을 전부 주고, 기간·기능·모델 필터와 집계는 여기서 한다.
+// 타일·모델별 표·목록이 같은 필터 배열에서 나오므로 서로 어긋날 수 없다.
+const fmtN=n=>new Intl.NumberFormat('ko-KR').format(n||0),usd=n=>`$${Number(n||0).toFixed(4)}`;
+// 서버 AiOperationsService.NON_MODEL_LABELS 와 같은 목록. 모델을 안 쓰는 실행은 표에서 뺀다.
+const NON_MODEL=new Set(['모델 사용 안 함','초안 템플릿']);
+const AI_OPS={items:[]};
+const localDate=d=>new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,10);
+// 고정 옵션(keep개)은 남기고 뒤를 데이터로 채운다. 고르고 있던 값은 유지한다.
+function fillSelect(id,options,keep){const s=$(id),v=s.value;s.innerHTML=[...s.options].slice(0,keep).map(o=>o.outerHTML).join('')+options.map(([value,label])=>`<option value="${esc(value)}">${esc(label)}</option>`).join('');s.value=v;if(s.selectedIndex<0)s.selectedIndex=0}
+function aiFiltered(items){
+ const range=$('ai-filter-range').value,agent=$('ai-filter-agent').value,model=$('ai-filter-model').value;
+ const today=localDate(new Date()),weekAgo=localDate(new Date(Date.now()-6*86400000));
+ const inRange=x=>range==='today'?x.executedAt.slice(0,10)===today:range==='7d'?x.executedAt.slice(0,10)>=weekAgo:x.executedAt.slice(0,7)===range;
+ return items.filter(x=>inRange(x)&&(!agent||x.agent===agent)&&(!model||x.model===model));
+}
+function modelMatrix(items){
+ const m={};
+ for(const x of items){if(NON_MODEL.has(x.model))continue;const r=m[x.model]||(m[x.model]={model:x.model,runs:0,inputTokens:0,outputTokens:0,estimatedCostUsd:0,durationMs:0});r.runs++;r.inputTokens+=x.inputTokens;r.outputTokens+=x.outputTokens;r.estimatedCostUsd+=x.estimatedCostUsd;r.durationMs+=x.durationMs}
+ return Object.values(m).sort((a,b)=>b.runs-a.runs);
+}
+function renderAiOperations(data){
+ AI_OPS.items=data.items||[];
+ const distinct=f=>[...new Set(AI_OPS.items.map(f))];
+ fillSelect('ai-filter-agent',distinct(x=>x.agent).sort().map(a=>[a,a]),1);
+ fillSelect('ai-filter-model',distinct(x=>x.model).sort().map(m=>[m,m]),1);
+ fillSelect('ai-filter-range',distinct(x=>x.executedAt.slice(0,7)).sort().reverse().map(ym=>[ym,`${ym.slice(0,4)}년 ${Number(ym.slice(5,7))}월`]),2);
+ renderAiFiltered();
+}
+function renderAiFiltered(){
+ const all=AI_OPS.items,items=aiFiltered(all),sum=k=>items.reduce((a,x)=>a+(x[k]||0),0);
+ $('ai-run-count').textContent=items.length;$('ai-success-count').textContent=items.filter(x=>x.status==='성공').length;
+ $('ai-token-count').textContent=`${fmtN(sum('inputTokens'))} / ${fmtN(sum('outputTokens'))}`;$('ai-cost').textContent=usd(sum('estimatedCostUsd'));$('ai-duration').textContent=dur(sum('durationMs'));
+ const rows=modelMatrix(items),t=$('ai-model-matrix');t.hidden=!rows.length;
+ t.innerHTML=`<thead><tr><th>모델</th><th>실행</th><th>입력 토큰</th><th>출력 토큰</th><th>예상 비용</th><th>평균 시간</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${esc(r.model)}</td><td>${r.runs}</td><td>${fmtN(r.inputTokens)}</td><td>${fmtN(r.outputTokens)}</td><td>${usd(r.estimatedCostUsd)}</td><td>${dur(r.durationMs/r.runs)}</td></tr>`).join('')}</tbody>`;
+ renderPaged('ai-operation-list',items,'ai-operation-list',all.length?'이 조건에 해당하는 실행이 없습니다.':'아직 AI 실행 이력이 없습니다.',x=>`<article class="ai-operation"><div class="ai-operation-head"><div><span class="tag ${x.status==='성공'?'done':'late'}">${esc(x.status)}</span><b>${esc(x.agent)}</b><span>${esc(x.executedAt.replace('T',' ').slice(0,16))} · ${dur(x.durationMs)}</span></div><strong>${usd(x.estimatedCostUsd)}</strong></div><p><b>${esc(x.provider)}</b> · ${esc(x.model)} · 입력 ${fmtN(x.inputTokens)} · 출력 ${fmtN(x.outputTokens)}</p><div class="tool-list">${x.tools.map(tool=>`<span>${esc(tool)}</span>`).join('')}</div><small>${esc(x.error||x.resultPreview||'결과 정보가 없습니다.')}</small></article>`);
+}
+['ai-filter-agent','ai-filter-model','ai-filter-range'].forEach(id=>$(id).onchange=()=>{if(pageState['ai-operation-list'])pageState['ai-operation-list'].page=0;renderAiFiltered()});
 function renderContentPackages(items){renderPaged('content-package-list',items,'content-package-list','아직 생성된 콘텐츠 패키지가 없습니다.',item=>`<article class="content-package"><b>${esc(item.title)}</b><p>${esc(item.tone)} · ${esc(item.target)} · ${esc(item.createdAt.replace('T',' ').slice(0,16))}</p><div class="content-output-grid">${item.outputs.map(output=>`<details><summary>${esc(output.channel)} · ${esc(output.title)}</summary><pre>${esc(output.body)}</pre></details>`).join('')}</div></article>`)}
 const SLACK_LABEL={SENT:'Slack 전송됨',FAILED:'Slack 전송 실패',NOT_CONFIGURED:'Slack 미설정'};
 function renderTopicDrafts(items){renderPaged('topic-draft-list',items,'topic-draft-list','아직 생성된 대본 초안이 없습니다.',x=>`<article class="topic-draft" id="topic-draft-${esc(x.id)}"><div class="topic-draft-head"><div><b>${esc(x.title)}</b><p class="meta"><span class="tag wait">검토 대기</span> <span class="tag ${x.slackStatus==='SENT'?'done':'late'}">${esc(SLACK_LABEL[x.slackStatus]||x.slackStatus)}</span> ${esc(x.source)} · ${esc(x.category)} · 우선순위 ${Number(x.priorityScore).toFixed(2)} · ${esc(x.createdAt.replace('T',' ').slice(0,16))}</p></div>${x.slackStatus==='SENT'?'':`<button class="light" data-notify-id="${esc(x.id)}">Slack 알림 재시도</button>`}</div><p class="hook">${esc(x.hook)}</p><pre>${esc(x.script)}</pre><p class="meta">${(x.hashtags||[]).map(t=>esc(t)).join(' ')}</p>${x.slackError?`<p class="slack-error">${esc(x.slackError)}</p>`:''}${x.sourceUrl?`<a class="text-link" href="${esc(x.sourceUrl)}" target="_blank" rel="noreferrer">출처 원문 열기</a>`:''}</article>`);focusHashDraft()}

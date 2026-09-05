@@ -16,7 +16,7 @@ import kotlin.test.assertTrue
 class AiNewsBriefingServiceTest {
     private val server: HttpServer = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0)
     private val documents = FakeDocumentStore()
-    private val operations = AiOperationsService(ObjectMapper(), documents, RecordingSlackService(), OfficeProperties())
+    private val operations = AiOperationsService(documents, RecordingSlackService(), OfficeProperties())
     private val news = mock(AiNewsService::class.java)
 
     @AfterEach fun stop() = server.stop(0)
