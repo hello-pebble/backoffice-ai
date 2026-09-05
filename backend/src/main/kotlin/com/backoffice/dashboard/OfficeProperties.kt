@@ -20,8 +20,8 @@ data class OfficeProperties(
         val sessionHours: Long = 2,
         // URL 을 아는 누구나 부를 수 있다. 이 값이 곧 하루 비용 상한이다.
         val llmDailyLimit: Int = 30,
-        // 한 방문자가 하루치를 다 쓰지 못하게 한다.
-        val llmSessionLimit: Int = 3,
+        // 한 방문자가 하루치를 다 쓰지 못하게 한다. 인스타툰·주제 초안·핵심 요약을 합쳐서 센다.
+        val llmSessionLimit: Int = 5,
     )
     data class Toss(
         val enabled: Boolean = false,

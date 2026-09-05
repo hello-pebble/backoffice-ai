@@ -21,7 +21,8 @@ app.cors.allowed-origins=http://127.0.0.1:8765
 office.demo.enabled=false
 office.demo.session-hours=2
 office.demo.llm-daily-limit=30
-office.demo.llm-session-limit=3
+# 방문자 한 명이 쓸 수 있는 횟수. 인스타툰·주제 초안·핵심 요약을 합쳐서 셉니다.
+office.demo.llm-session-limit=5
 
 # 토스증권 Open API. 자격증명을 받은 뒤 enabled=true 로 바꾸세요.
 office.toss.enabled=false
