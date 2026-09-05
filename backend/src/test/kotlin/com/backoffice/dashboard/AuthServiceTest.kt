@@ -36,6 +36,8 @@ class AuthServiceTest {
         // 이 스코프가 빠지면 로그인은 되지만 Gmail 연동이 다시 별도 절차로 돌아간다.
         assertTrue(url.contains("gmail.readonly"), "Gmail 스코프가 빠졌다: $url")
         assertTrue(url.contains("access_type=offline"), "리프레시 토큰 요청이 빠졌다: $url")
+        // 강제 재동의가 빠지면 저장된 토큰이 죽었을 때 재로그인으로 복구할 수 없다.
+        assertTrue(url.contains("approval_prompt=force"), "강제 재동의가 빠졌다: $url")
     }
 
     @Test
