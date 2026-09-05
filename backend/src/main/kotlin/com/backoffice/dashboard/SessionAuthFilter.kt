@@ -91,6 +91,9 @@ class SessionAuthFilter(
             "GET /api/topic-drafts",
             "POST /api/topic-drafts/refresh",
             "GET /api/slack/status",
+            // 인스타툰은 모델을 한 번 부르고 문서 저장소에 남긴다. 파이썬 프로세스를 띄우지 않는다.
+            "GET /api/instagram-toons",
+            "POST /api/instagram-toons",
         )
 
         /** 화면이 로그인 여부를 즉시 알기 위한 표시용 쿠키. 인증 판단에는 쓰지 않는다. */

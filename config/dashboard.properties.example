@@ -14,6 +14,15 @@ office.auth.cookie-secure=false
 office.auth.cookie-same-site=Lax
 app.cors.allowed-origins=http://127.0.0.1:8765
 
+# 데모 모드. 로그인 화면의 "데모로 둘러보기" 버튼을 켭니다.
+# 데모는 문서 키에 demo: 를 붙여 실데이터와 분리되고, 허용 목록 밖의 경로는 403 으로 막힙니다.
+# 그 격리를 세션 필터가 걸기 때문에 office.auth.enabled=true 가 아니면 데모 시작이 거부됩니다.
+# AI 생성은 실제로 실행되므로 아래 두 한도가 곧 하루 비용 상한입니다.
+office.demo.enabled=false
+office.demo.session-hours=2
+office.demo.llm-daily-limit=30
+office.demo.llm-session-limit=3
+
 # 토스증권 Open API. 자격증명을 받은 뒤 enabled=true 로 바꾸세요.
 office.toss.enabled=false
 office.toss.base-url=https://openapi.tossinvest.com

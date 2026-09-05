@@ -28,6 +28,7 @@
                 <a class="active" href="#ai-operations">AI 운영 센터</a>
                 <a href="#topic-drafts">주제 대본 초안</a>
                 <a href="#content-studio">콘텐츠 생성 에이전트</a>
+                <a href="#instagram-toons">인스타툰 대본</a>
                 <a href="#mail">메일</a>
                 <a href="#ai-news">최신 소식</a>
                 <a href="#market">국내 관심 종목</a>
@@ -108,6 +109,24 @@
                     <button class="submit" id="content-package-submit">콘텐츠 패키지 생성</button>
                 </form>
                 <div id="content-package-list" class="empty">아직 생성된 콘텐츠 패키지가 없습니다.</div>
+            </section>
+
+            <section id="instagram-toons" class="card">
+                <div class="heading">
+                    <h2>인스타툰 대본</h2>
+                </div>
+                <p class="muted">에피소드 한 줄을 넣으면 컷별 장면, 대사, 나레이션과 그림 생성용 이미지 프롬프트를 함께 만듭니다.</p>
+                <form id="toon-form" class="studio-form">
+                    <label>에피소드
+                        <textarea name="episode" required minlength="10" placeholder="예: 출근길에 우산을 두고 온 날, 하필 퇴근 때 비가 쏟아졌다."></textarea>
+                    </label>
+                    <div class="studio-fields">
+                        <label>톤<select name="tone"><option>공감형</option><option>유머형</option><option>담담형</option></select></label>
+                        <label>컷 수<select name="panelCount"><option value="4">4컷</option><option value="8">8컷</option></select></label>
+                    </div>
+                    <button class="submit" id="toon-submit">대본과 이미지 프롬프트 생성</button>
+                </form>
+                <div id="toon-list" class="empty">아직 생성된 인스타툰 대본이 없습니다.</div>
             </section>
 
             <section id="mail" class="card">
