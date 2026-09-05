@@ -17,6 +17,7 @@ import kotlin.math.exp
 class TopicDraftService(
     private val properties: OfficeProperties,
     private val aiNewsService: AiNewsService,
+    private val automationRepository: AutomationRepository,
     private val objectMapper: ObjectMapper,
     private val aiOperationsService: AiOperationsService,
     private val documents: JsonDocumentStore,
@@ -30,9 +31,14 @@ class TopicDraftService(
     fun refresh(): TopicDraft {
         val startedAt = System.nanoTime()
         val target = llm.target()
+        val now = OffsetDateTime.now()
         val news = aiNewsService.refresh()
-        val candidate = selectCandidate(news, load().map { it.sourceId }.toSet(), OffsetDateTime.now())
-            ?: throw IllegalArgumentException("초안으로 만들 새 주제가 없습니다. 소식원이 갱신된 뒤 다시 시도하세요.")
+        val newsCandidate = selectCandidate(news, load().map { it.sourceId }.toSet(), now)?.let { DraftSource.fromNews(it, now) }
+        // 우선순위·검색량이 높은 키워드 하나만 후보로 본다. 이미 automationRepository 가 그 순서로 정렬해 준다.
+        val keyword = automationRepository.unusedKeywords(1).firstOrNull()
+        val keywordCandidate = keyword?.let { DraftSource.fromKeyword(it) }
+        val candidate = listOfNotNull(newsCandidate, keywordCandidate).maxByOrNull { it.priorityScore }
+            ?: throw IllegalArgumentException("초안으로 만들 새 주제가 없습니다. 소식원이나 키워드가 갱신된 뒤 다시 시도하세요.")
         val (usage, script) = try {
             generate(candidate, target)
         } catch (error: Exception) {
@@ -41,7 +47,7 @@ class TopicDraftService(
                 agent = "주제 대본 초안 에이전트",
                 provider = target.vendor,
                 model = target.model,
-                tools = listOf("AI 뉴스 수집", llm.toolLabel(target)),
+                tools = listOf(candidate.toolLabel, llm.toolLabel(target)),
                 durationMs = (System.nanoTime() - startedAt) / 1_000_000,
                 status = "실패",
                 error = "${target.endpoint} → $reason",
@@ -50,12 +56,16 @@ class TopicDraftService(
             if (error is IllegalArgumentException) throw error
             throw IllegalStateException("대본 초안 생성에 실패했습니다 (${target.endpoint}): $reason", error)
         }
-        val draft = persist(candidate, script, target.model, OffsetDateTime.now())
+        val draft = persist(candidate, script, target.model, now)
+        // 같은 키워드로 두 번 대본을 만들지 않도록, 성공했을 때만 사용 처리한다.
+        if (candidate.keyword != null) {
+            automationRepository.saveKeyword(SaveKeywordRequest(id = candidate.keyword.id, used = true, priority = candidate.keyword.priority))
+        }
         aiOperationsService.record(
             agent = "주제 대본 초안 에이전트",
             provider = target.vendor,
             model = target.model,
-            tools = listOf("AI 뉴스 수집", llm.toolLabel(target), "Slack 알림 · ${draft.slackStatus}"),
+            tools = listOf(candidate.toolLabel, llm.toolLabel(target), "Slack 알림 · ${draft.slackStatus}"),
             durationMs = (System.nanoTime() - startedAt) / 1_000_000,
             inputTokens = usage.inputTokens,
             outputTokens = usage.outputTokens,
@@ -78,16 +88,16 @@ class TopicDraftService(
     }
 
     /** 초안 저장은 Slack 결과와 무관하게 성공한다. 알림 상태만 함께 기록해 둔다. */
-    internal fun persist(candidate: AiNewsItem, script: TopicScript, model: String, now: OffsetDateTime): TopicDraft {
+    internal fun persist(candidate: DraftSource, script: TopicScript, model: String, now: OffsetDateTime): TopicDraft {
         val id = UUID.randomUUID().toString()
         val draft = TopicDraft(
             id = id,
-            sourceId = candidate.id,
+            sourceId = candidate.sourceId,
             source = candidate.source,
-            sourceTitle = candidate.title,
-            sourceUrl = candidate.url,
+            sourceTitle = candidate.sourceTitle,
+            sourceUrl = candidate.sourceUrl,
             category = candidate.category,
-            priorityScore = priorityScore(candidate, now),
+            priorityScore = candidate.priorityScore,
             title = script.title,
             hook = script.hook,
             script = script.script,
@@ -111,16 +121,14 @@ class TopicDraftService(
 
     private fun reviewUrl(id: String): String = "${properties.slack.reviewBaseUrl.trim().trimEnd('/')}/#topic-draft-$id"
 
-    private fun generate(item: AiNewsItem, target: LlmTarget): Pair<LlmResponse, TopicScript> {
-        val prompt = """다음 소식 하나를 소개하는 한국어 숏폼 검토 대본을 작성하세요.
+    private fun generate(source: DraftSource, target: LlmTarget): Pair<LlmResponse, TopicScript> {
+        val prompt = """다음 내용 하나를 소개하는 한국어 숏폼 검토 대본을 작성하세요.
 읽어서 45~60초 분량(공백 포함 550~750자)으로 씁니다.
-아래 제목·요약·주소에 있는 내용만 근거로 삼고, 원문에 없는 수치·기능·출시일·추측은 만들지 마세요.
+${source.guardrail}
 반드시 JSON만 반환하세요: {"title":"영상 제목","hook":"3초 훅 한 문장","script":"대본 전문","hashtags":["태그","태그"]}.
 
-제목=${item.title}
-요약=${item.summary}
-주소=${item.url}
-출처=${item.source}"""
+제목=${source.sourceTitle}
+${source.context}"""
         val response = llm.chat("당신은 사실을 과장하지 않는 한국어 숏폼 대본 작가입니다.", prompt)
         return response to parseScript(response.content, if (target.useOllama) "로컬 모델" else "AI 모델")
     }
@@ -158,6 +166,11 @@ class TopicDraftService(
         fun selectCandidate(items: List<AiNewsItem>, usedSourceIds: Set<String>, now: OffsetDateTime): AiNewsItem? =
             items.filterNot { it.id in usedSourceIds }.maxByOrNull { priorityScore(it, now) }
 
+        // ponytail: priority·search_volume 단위가 뉴스 카테고리 가중치(1~10)와 안 맞을 수 있는 임의 환산이다.
+        // 실제 데이터로 어느 쪽이 계속 이기는지 보고 스케일을 조정하라.
+        fun keywordPriorityScore(item: AutomationKeyword): Double =
+            item.priority.toDouble() + (item.searchVolume / 1000.0).coerceIn(0.0, 5.0)
+
         // RFC 1123(pubDate)과 ISO 8601(Atom)이 섞여 들어온다. 못 읽으면 48시간 경과로 본다.
         private fun parseTime(value: String?): OffsetDateTime? {
             if (value.isNullOrBlank()) return null
@@ -165,6 +178,50 @@ class TopicDraftService(
                 .recoverCatching { OffsetDateTime.parse(value, DateTimeFormatter.RFC_1123_DATE_TIME) }
                 .getOrNull()
         }
+    }
+}
+
+/** 뉴스 기사와 자동화 키워드처럼 서로 다른 후보를 같은 방식으로 고르고 대본 프롬프트를 만들기 위한 공통 형태. */
+data class DraftSource(
+    val sourceId: String,
+    val source: String,
+    val sourceTitle: String,
+    val sourceUrl: String,
+    val category: String,
+    val priorityScore: Double,
+    val guardrail: String,
+    val context: String,
+    val toolLabel: String,
+    val keyword: AutomationKeyword? = null,
+) {
+    companion object {
+        private const val NEWS_GUARDRAIL = "아래 제목·요약·주소에 있는 내용만 근거로 삼고, 원문에 없는 수치·기능·출시일·추측은 만들지 마세요."
+        private const val KEYWORD_GUARDRAIL = "키워드와 관련해 일반적으로 알려진 사실만 사용하고, 확인되지 않는 수치·통계·최신 소식은 만들지 마세요."
+
+        fun fromNews(item: AiNewsItem, now: OffsetDateTime): DraftSource = DraftSource(
+            sourceId = item.id,
+            source = item.source,
+            sourceTitle = item.title,
+            sourceUrl = item.url,
+            category = item.category,
+            priorityScore = TopicDraftService.priorityScore(item, now),
+            guardrail = NEWS_GUARDRAIL,
+            context = "요약=${item.summary}\n주소=${item.url}\n출처=${item.source}",
+            toolLabel = "AI 뉴스 수집",
+        )
+
+        fun fromKeyword(item: AutomationKeyword): DraftSource = DraftSource(
+            sourceId = "keyword-${item.id}",
+            source = "키워드 수집",
+            sourceTitle = item.keyword,
+            sourceUrl = "",
+            category = item.category,
+            priorityScore = TopicDraftService.keywordPriorityScore(item),
+            guardrail = KEYWORD_GUARDRAIL,
+            context = "키워드=${item.keyword}\n카테고리=${item.category}",
+            toolLabel = "키워드 수집",
+            keyword = item,
+        )
     }
 }
 

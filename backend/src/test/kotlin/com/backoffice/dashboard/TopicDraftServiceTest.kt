@@ -31,6 +31,7 @@ class TopicDraftServiceTest {
         return TopicDraftService(
             properties = properties,
             aiNewsService = mock(AiNewsService::class.java),
+            automationRepository = mock(AutomationRepository::class.java),
             objectMapper = ObjectMapper(),
             aiOperationsService = mock(AiOperationsService::class.java),
             documents = documents,
@@ -66,7 +67,7 @@ class TopicDraftServiceTest {
         val service = service()
         val script = TopicScript("영상 제목", "3초 훅", "대본 전문", listOf("#AI"))
 
-        val draft = service.persist(news("a", "모델", 1), script, "llama3.2:1b", now)
+        val draft = service.persist(DraftSource.fromNews(news("a", "모델", 1), now), script, "llama3.2:1b", now)
 
         assertEquals("REVIEW_PENDING", draft.reviewStatus)
         assertEquals("NOT_CONFIGURED", draft.slackStatus)
