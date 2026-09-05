@@ -9,7 +9,7 @@
   - 세션은 HttpOnly 쿠키로 관리하고, 로그인 여부만 표시용 쿠키(`office_session_hint`)로 즉시 판단해 로그인 카드 깜빡임을 방지
   - `renderPaged`가 목록형 UI(뉴스, AI 운영 이력, 콘텐츠 패키지, 주제 대본 등)의 페이지네이션을 공통 처리
   - Slack 연결/채널 선택, 콘텐츠 패키지 생성, 주제 대본 새로고침·Slack 알림 재시도, 자동화 워커 수동 실행 등 사용자 액션을 fetch로 호출
-- `static/styles.css`, `static/toon.css`: 스타일시트
+- `static/styles.css`: 스타일시트 (서체는 IBM Plex Sans KR, Google Fonts에서 로드)
 - `static/favicon.svg`: 파비콘
 - `static/vercel.json`: 정적 배포 설정
 
