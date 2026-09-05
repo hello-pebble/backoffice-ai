@@ -24,6 +24,7 @@ class DashboardControllerTest {
     private val contentStudio = mock(ContentStudioService::class.java)
     private val gmail = mock(GmailService::class.java)
     private val slack = mock(SlackService::class.java)
+    private val auth = mock(AuthService::class.java)
     private val jdbc = mock(JdbcTemplate::class.java)
 
     private val controller = DashboardController(
@@ -37,7 +38,7 @@ class DashboardControllerTest {
         aiOperationsService = mock(AiOperationsService::class.java),
         contentStudioService = contentStudio,
         topicDraftService = topicDrafts,
-        authService = mock(AuthService::class.java),
+        authService = auth,
         slackService = slack,
         properties = OfficeProperties(),
         automationRepository = mock(AutomationRepository::class.java),
@@ -133,6 +134,17 @@ class DashboardControllerTest {
 
         doThrow(IllegalStateException("Slack 채널 목록을 가져오지 못했습니다: invalid_auth")).`when`(slack).channels()
         assertEquals(HttpStatus.BAD_GATEWAY, status { controller.slackChannels() })
+    }
+
+    @Test
+    fun `로그인 쿠키는 Max-Age 없는 브라우저 세션 쿠키다`() {
+        `when`(auth.completeLogin("코드", "상태")).thenReturn(LoginResult("session-token", null, "owner@example.com"))
+
+        val cookies = controller.authCallback("코드", "상태").headers[org.springframework.http.HttpHeaders.SET_COOKIE].orEmpty()
+
+        // Max-Age 를 주면 쿠키가 디스크에 남아 브라우저·컴퓨터를 껐다 켜도 로그인이 유지된다.
+        assertEquals(2, cookies.size, "실제 쿠키: $cookies")
+        assertTrue(cookies.none { it.contains("Max-Age") }, "브라우저를 닫아도 남는 쿠키가 있다: $cookies")
     }
 
     @Test

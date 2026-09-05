@@ -190,10 +190,11 @@ class DashboardController(
         val token = result.token
             ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).header("Content-Type", "text/html; charset=utf-8")
                 .body(page(result.error ?: "로그인하지 못했습니다."))
-        val maxAge = properties.auth.sessionHours * 3600
+        // Max-Age 를 주지 않는 브라우저 세션 쿠키. 브라우저를 완전히 닫으면 로그아웃된다.
+        // 안 닫고 계속 쓰는 경우는 서버 세션 만료(office.auth.session-hours)가 상한이다.
         return ResponseEntity.status(HttpStatus.FOUND)
-            .header(HttpHeaders.SET_COOKIE, sessionCookie(token, maxAge).toString())
-            .header(HttpHeaders.SET_COOKIE, hintCookie("1", maxAge).toString())
+            .header(HttpHeaders.SET_COOKIE, sessionCookie(token, maxAgeSeconds = null).toString())
+            .header(HttpHeaders.SET_COOKIE, hintCookie("1", maxAgeSeconds = null).toString())
             .header(HttpHeaders.LOCATION, properties.auth.successRedirect)
             .body("")
     }
@@ -214,7 +215,7 @@ class DashboardController(
             .body(mapOf("ok" to true))
     }
 
-    private fun sessionCookie(value: String, maxAgeSeconds: Long) =
+    private fun sessionCookie(value: String, maxAgeSeconds: Long?) =
         cookie(SessionAuthFilter.COOKIE, value, maxAgeSeconds, httpOnly = true)
 
     /**
@@ -223,12 +224,13 @@ class DashboardController(
      * 값이 없는 힌트 쿠키를 하나 더 줘서 화면이 첫 줄에서 바로 판단하게 한다.
      * 이 쿠키는 인증에 쓰이지 않는다. 위조해도 서버는 세션 쿠키만 본다.
      */
-    private fun hintCookie(value: String, maxAgeSeconds: Long) =
+    private fun hintCookie(value: String, maxAgeSeconds: Long?) =
         cookie(SessionAuthFilter.HINT_COOKIE, value, maxAgeSeconds, httpOnly = false)
 
-    private fun cookie(name: String, value: String, maxAgeSeconds: Long, httpOnly: Boolean): ResponseCookie =
+    /** maxAgeSeconds 가 null 이면 디스크에 남지 않는 브라우저 세션 쿠키가 된다. 로그아웃은 0 으로 지운다. */
+    private fun cookie(name: String, value: String, maxAgeSeconds: Long?, httpOnly: Boolean): ResponseCookie =
         ResponseCookie.from(name, value)
-            .httpOnly(httpOnly).path("/").maxAge(maxAgeSeconds)
+            .httpOnly(httpOnly).path("/").apply { maxAgeSeconds?.let { maxAge(it) } }
             .secure(properties.auth.cookieSecure).sameSite(properties.auth.cookieSameSite).build()
 
     private fun page(message: String) = "<!doctype html><html lang=\"ko\"><body><p>$message</p></body></html>"
