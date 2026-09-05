@@ -94,7 +94,21 @@ function renderSlack(status){const target=$('slack-status');if(!status){target.c
  target.innerHTML=`<span class="tag done">연결됨</span><b>${esc(status.teamName||'워크스페이스')}</b><span>알림 채널</span><select id="slack-channel">${options||'<option value="">채널 목록을 불러오세요</option>'}</select><button class="light" id="slack-channel-load">채널 목록 새로고침</button>${status.channelName?`<span class="muted">현재 #${esc(status.channelName)}</span>`:'<span class="muted">채널을 고르면 알림이 시작됩니다.</span>'}`;
 }
 const j=u=>fetch(u).then(r=>r.ok?(r.status===204?null:r.json()):null).catch(()=>null);
-async function load(){const [d,packages,news,briefing,aiOperations,topicDrafts,slack]=await Promise.all([j('/api/dashboard'),j('/api/content-packages'),j('/api/ai-news'),j('/api/ai-news/briefing'),j('/api/ai-operations'),j('/api/topic-drafts'),j('/api/slack/status')]);if(d)renderDashboard(d);if(packages)renderContentPackages(packages);if(news)renderNews(news);renderBriefing(briefing);if(aiOperations)renderAiOperations(aiOperations);if(topicDrafts)renderTopicDrafts(topicDrafts);renderSlack(slack)}
+// 응답을 다 모아 기다리지 않고 도착하는 대로 그린다. 외부 API(Gmail·토스)를 부르는
+// /api/dashboard 가 2초 걸려도 나머지 화면은 먼저 뜬다.
+// drawNull 은 값이 없을 때도 그려야 하는 화면(브리핑·Slack)에만 켠다.
+function load(){
+ const paint=(url,render,drawNull)=>j(url).then(v=>{if(v||drawNull)render(v)});
+ return Promise.all([
+  paint('/api/dashboard',renderDashboard),
+  paint('/api/content-packages',renderContentPackages),
+  paint('/api/ai-news',renderNews),
+  paint('/api/ai-news/briefing',renderBriefing,true),
+  paint('/api/ai-operations',renderAiOperations),
+  paint('/api/topic-drafts',renderTopicDrafts),
+  paint('/api/slack/status',renderSlack,true),
+ ]);
+}
 async function newsRead(id){await fetch(`/api/ai-news/${id}/read`,{method:'PATCH'}).then(r=>r.json()).then(renderNews)}
 $('refresh').onclick=load;
 $('news-list').addEventListener('click',e=>{const a=e.target.closest('a[data-news-id]');if(a)newsRead(a.dataset.newsId)});
