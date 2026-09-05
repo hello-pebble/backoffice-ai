@@ -109,13 +109,6 @@ class DashboardControllerTest {
     }
 
     @Test
-    fun `Gmail 자격증명이 없으면 409 로 알려 준다`() {
-        doThrow(IllegalArgumentException("Gmail OAuth 자격증명이 설정되지 않았습니다.")).`when`(gmail).authorizationUrl()
-
-        assertEquals(HttpStatus.CONFLICT, status { controller.connectGmail() })
-    }
-
-    @Test
     fun `DB 가 죽으면 health 는 503 이다`() {
         `when`(jdbc.queryForObject("select 1", Int::class.java)).thenThrow(RuntimeException("connection refused"))
 

@@ -22,7 +22,6 @@ data class OfficeProperties(
     )
     data class Gmail(
         val enabled: Boolean = false,
-        val redirectUri: String = "http://127.0.0.1:8765/api/gmail/callback",
         val credentialsPath: String = "data/office-dashboard/gmail-credentials.json",
         // 배포용. 클라이언트 JSON 원문을 그대로 넣는다. 값이 있으면 credentialsPath보다 우선한다.
         val credentialsJson: String = "",
@@ -50,7 +49,7 @@ data class OfficeProperties(
         val enabled: Boolean = true,
         // 로그인을 허용할 이메일. 비어 있으면 아무도 로그인할 수 없다(닫힌 기본값).
         val allowedEmails: List<String> = emptyList(),
-        // Google Cloud 콘솔에 등록한 값과 정확히 같아야 한다. Gmail 연동과는 다른 주소다.
+        // Google Cloud 콘솔에 등록한 값과 정확히 같아야 한다. 로그인이 Gmail 동의까지 함께 받는다.
         val redirectUri: String = "http://127.0.0.1:8765/api/auth/callback",
         val sessionHours: Long = 168,
         // 프런트가 다른 도메인(Vercel)에 있으면 secure=true, same-site=None 이어야 쿠키가 붙는다.

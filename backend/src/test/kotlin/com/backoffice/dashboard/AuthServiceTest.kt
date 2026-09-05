@@ -6,14 +6,37 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertNotEquals
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class AuthServiceTest {
     private val documents = FakeDocumentStore()
 
-    private fun service(vararg allowed: String) = AuthService(
-        OfficeProperties(auth = OfficeProperties.Auth(allowedEmails = allowed.toList())),
+    private fun service(vararg allowed: String, credentialsJson: String = "") = AuthService(
+        OfficeProperties(
+            auth = OfficeProperties.Auth(allowedEmails = allowed.toList()),
+            gmail = OfficeProperties.Gmail(credentialsJson = credentialsJson, credentialsPath = "존재하지-않는-경로/x.json"),
+        ),
         documents,
+        PostgresDataStoreFactory(documents),
     )
+
+    private val clientJson = """
+        {"web":{"client_id":"test-client-id","client_secret":"test-secret",
+        "auth_uri":"https://accounts.google.com/o/oauth2/auth",
+        "token_uri":"https://oauth2.googleapis.com/token",
+        "redirect_uris":["http://127.0.0.1:8765/api/auth/callback"]}}
+    """.trimIndent()
+
+    @Test
+    fun `로그인 동의가 Gmail 스코프와 리프레시 토큰 요청을 함께 담는다`() {
+        val url = service("owner@example.com", credentialsJson = clientJson).authorizationUrl()
+
+        assertTrue(url.startsWith("https://accounts.google.com/o/oauth2/auth"), "실제 URL: $url")
+        assertTrue(url.contains("client_id=test-client-id"), "실제 URL: $url")
+        // 이 스코프가 빠지면 로그인은 되지만 Gmail 연동이 다시 별도 절차로 돌아간다.
+        assertTrue(url.contains("gmail.readonly"), "Gmail 스코프가 빠졌다: $url")
+        assertTrue(url.contains("access_type=offline"), "리프레시 토큰 요청이 빠졌다: $url")
+    }
 
     @Test
     fun `허용 목록은 대소문자와 앞뒤 공백을 무시한다`() {

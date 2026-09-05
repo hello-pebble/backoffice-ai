@@ -2,7 +2,6 @@ package com.backoffice.dashboard
 
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
@@ -17,36 +16,34 @@ class GmailServiceTest {
         {"web":{"client_id":"test-client-id","client_secret":"test-secret",
         "auth_uri":"https://accounts.google.com/o/oauth2/auth",
         "token_uri":"https://oauth2.googleapis.com/token",
-        "redirect_uris":["http://127.0.0.1:8765/api/gmail/callback"]}}
+        "redirect_uris":["http://127.0.0.1:8765/api/auth/callback"]}}
     """.trimIndent()
 
     private fun service(gmail: OfficeProperties.Gmail) =
         GmailService(OfficeProperties(gmail = gmail), PostgresDataStoreFactory(FakeDocumentStore()))
 
     @Test
-    fun `자격증명이 환경변수로만 있어도 인증 URL을 만든다`() {
+    fun `자격증명이 환경변수로만 있어도 인식하고, 토큰이 없으면 로그인 안내를 준다`() {
         val gmail = OfficeProperties.Gmail(
             enabled = true,
             credentialsJson = clientJson,
             credentialsPath = "존재하지-않는-경로/gmail-credentials.json",
         )
 
-        val url = service(gmail).authorizationUrl()
+        val overview = service(gmail).overview()
 
-        assertTrue(url.startsWith("https://accounts.google.com/o/oauth2/auth"), "실제 URL: $url")
-        assertTrue(url.contains("client_id=test-client-id"), "실제 URL: $url")
-        assertTrue(url.contains("gmail.readonly"), "요청 스코프가 빠졌다: $url")
-        assertTrue(url.contains("access_type=offline"), "리프레시 토큰 요청이 빠졌다: $url")
-        // 강제 재동의가 빠지면 재연결 시 리프레시 토큰이 오지 않아 약 1시간 뒤 끊긴다.
-        assertTrue(url.contains("approval_prompt=force"), "강제 재동의가 빠졌다: $url")
+        assertFalse(overview.connected)
+        assertEquals("Gmail 연동이 아직 없습니다. Google 로그인을 다시 하면 연결됩니다.", overview.message)
     }
 
     @Test
-    fun `파일도 환경변수도 없으면 인증 URL 생성이 거부된다`() {
+    fun `파일도 환경변수도 없으면 자격증명 안내를 준다`() {
         val gmail = OfficeProperties.Gmail(enabled = true, credentialsPath = "존재하지-않는-경로/x.json")
 
-        val error = assertFailsWith<IllegalArgumentException> { service(gmail).authorizationUrl() }
-        assertEquals("Gmail OAuth 자격증명이 설정되지 않았습니다.", error.message)
+        val overview = service(gmail).overview()
+
+        assertFalse(overview.connected)
+        assertEquals("Gmail OAuth 자격증명이 설정되지 않았습니다.", overview.message)
     }
 
     @Test
