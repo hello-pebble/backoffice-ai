@@ -30,6 +30,7 @@ office:
   auth:
     enabled: ${OFFICE_AUTH_ENABLED:false}
     allowed-emails: ${OFFICE_AUTH_ALLOWED_EMAILS:}
+    session-hours: ${OFFICE_AUTH_SESSION_HOURS:24}
     redirect-uri: ${OFFICE_AUTH_REDIRECT_URI:http://127.0.0.1:8765/api/auth/callback}
     success-redirect: ${OFFICE_AUTH_SUCCESS_REDIRECT:http://127.0.0.1:8765/}
     cookie-secure: ${OFFICE_AUTH_COOKIE_SECURE:false}
