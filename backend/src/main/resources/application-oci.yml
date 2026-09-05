@@ -27,6 +27,7 @@ office:
   auth:
     enabled: ${OFFICE_AUTH_ENABLED:true}
     allowed-emails: ${OFFICE_AUTH_ALLOWED_EMAILS:}
+    session-hours: ${OFFICE_AUTH_SESSION_HOURS:24}
     redirect-uri: ${OFFICE_AUTH_REDIRECT_URI:https://backoffice-ai-orpin.vercel.app/api/auth/callback}
     success-redirect: ${OFFICE_AUTH_SUCCESS_REDIRECT:https://backoffice-ai-orpin.vercel.app/}
     cookie-secure: ${OFFICE_AUTH_COOKIE_SECURE:true}

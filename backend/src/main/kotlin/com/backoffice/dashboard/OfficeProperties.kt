@@ -51,7 +51,8 @@ data class OfficeProperties(
         val allowedEmails: List<String> = emptyList(),
         // Google Cloud 콘솔에 등록한 값과 정확히 같아야 한다. 로그인이 Gmail 동의까지 함께 받는다.
         val redirectUri: String = "http://127.0.0.1:8765/api/auth/callback",
-        val sessionHours: Long = 168,
+        // 서버 측 세션 상한. 쿠키는 브라우저 세션 쿠키라 브라우저를 닫으면 먼저 끊긴다.
+        val sessionHours: Long = 24,
         // 프런트가 다른 도메인(Vercel)에 있으면 secure=true, same-site=None 이어야 쿠키가 붙는다.
         val cookieSecure: Boolean = false,
         val cookieSameSite: String = "Lax",
