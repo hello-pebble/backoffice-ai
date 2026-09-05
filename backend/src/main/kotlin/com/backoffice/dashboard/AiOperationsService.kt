@@ -33,7 +33,7 @@ class AiOperationsService(
             executedAt = OffsetDateTime.now().toString(),
             agent = agent,
             provider = provider,
-            model = model,
+            model = LlmClient.canonicalModel(model),
             status = status,
             durationMs = durationMs,
             inputTokens = inputTokens,
@@ -110,6 +110,8 @@ class AiOperationsService(
         return documents.readList("ai-operations", AiOperationRun::class.java)
             // ISO 문자열이라 앞 10자(YYYY-MM-DD) 비교로 충분하다. 형식이 깨진 시각은 버리지 않는다.
             .filter { it.executedAt.length < 10 || it.executedAt.substring(0, 10) >= cutoff }
+            // 정규화 이전에 저장된 기록도 같은 이름으로 합쳐 보인다. 다음 저장 때 그대로 굳는다.
+            .map { it.copy(model = LlmClient.canonicalModel(it.model)) }
     }
 
     private fun save(items: List<AiOperationRun>) = documents.write("ai-operations", items)

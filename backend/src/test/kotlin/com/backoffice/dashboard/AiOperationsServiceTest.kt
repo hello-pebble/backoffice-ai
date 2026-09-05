@@ -34,6 +34,16 @@ class AiOperationsServiceTest {
     }
 
     @Test
+    fun `표기만 다른 같은 모델은 한 이름으로 합산한다`() {
+        service.record(agent = "브리핑", provider = "openai", model = "OpenAI/GPT-4o ", tools = emptyList(), durationMs = 1)
+        service.record(agent = "대본 초안", provider = "openai", model = "gpt-4o", tools = emptyList(), durationMs = 1)
+        // 정규화 전에 저장된 기록도 읽을 때 같은 이름으로 합쳐진다.
+        store.write("ai-operations", service.overview().items + run("legacy", java.time.OffsetDateTime.now().toString()).copy(model = "Gpt-4o"))
+
+        assertEquals(listOf(ModelUsage("gpt-4o", 3)), service.overview().models)
+    }
+
+    @Test
     fun `오늘 입력·출력 토큰을 따로 합산한다`() {
         service.record(agent = "브리핑", provider = "openai", model = "gpt", tools = emptyList(), durationMs = 1, inputTokens = 400, outputTokens = 100)
         service.record(agent = "대본 초안", provider = "openai", model = "gpt", tools = emptyList(), durationMs = 1, inputTokens = 600, outputTokens = 250)

@@ -7,6 +7,17 @@ class LlmClientTest {
     private fun url(base: String) = LlmClient.chatCompletionsUrl(base)
 
     @Test
+    fun `모델 이름은 공백·조직 접두어·대소문자를 무시하고 같은 이름으로 만든다`() {
+        assertEquals("gpt-4o", LlmClient.canonicalModel(" OpenAI/GPT-4o "))
+        assertEquals("deepseek-v4-flash-0731", LlmClient.canonicalModel("deepseek-ai/deepseek-v4-flash-0731"))
+        assertEquals("llama3.2:1b", LlmClient.canonicalModel("llama3.2:1b"))
+        // 단가표는 정규화한 이름으로도, 예전처럼 원문 이름으로도 찾는다.
+        val client = LlmClient(OfficeProperties(llm = OfficeProperties.Llm(prices = mapOf("gpt-4o" to "2,8", "deepseek-ai/deepseek-v4-flash-0731" to "1,1"))), com.fasterxml.jackson.databind.ObjectMapper())
+        assertEquals(2.0 + 8.0, client.estimateCostUsd("OpenAI/GPT-4o", 1_000_000, 1_000_000), 0.000001)
+        assertEquals(2.0, client.estimateCostUsd("deepseek-ai/deepseek-v4-flash-0731", 1_000_000, 1_000_000), 0.000001)
+    }
+
+    @Test
     fun `버전 경로가 이미 있으면 그대로 이어 붙인다`() {
         // 워커의 OPENAI_BASE_URL 과 같은 값을 넣는 경우. /v1 을 또 붙이면 404 가 난다.
         assertEquals("https://integrate.api.nvidia.com/v1/chat/completions", url("https://integrate.api.nvidia.com/v1"))

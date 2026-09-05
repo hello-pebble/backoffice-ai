@@ -108,13 +108,21 @@ class LlmClient(private val properties: OfficeProperties, private val objectMapp
      * 워커(Python)가 돌려준 사용량도 같은 표로 환산해야 비용이 한 기준으로 모인다.
      */
     fun estimateCostUsd(model: String, inputTokens: Long, outputTokens: Long): Double {
-        val configured = properties.llm.prices[model]?.split(",")?.mapNotNull { it.trim().toDoubleOrNull() }
+        // 단가표 키도 정규화한 이름으로 찾는다. 예전 설정이 원문 이름으로 적혀 있으면 그것도 받는다.
+        val configured = (properties.llm.prices[canonicalModel(model)] ?: properties.llm.prices[model])
+            ?.split(",")?.mapNotNull { it.trim().toDoubleOrNull() }
         val input = configured?.getOrNull(0) ?: properties.aiNews.inputPricePerMillionUsd
         val output = configured?.getOrNull(1) ?: properties.aiNews.outputPricePerMillionUsd
         return inputTokens * input / 1_000_000 + outputTokens * output / 1_000_000
     }
 
     companion object {
+        /**
+         * 기록·단가표용 모델 이름. 같은 모델이 "OpenAI/GPT-4o", "gpt-4o " 처럼 다르게 적히면
+         * 운영 센터에서 두 줄로 갈라지고 단가도 못 찾는다. 제공자에 보내는 이름은 바꾸지 않는다.
+         */
+        fun canonicalModel(name: String): String = name.trim().substringAfterLast('/').lowercase()
+
         // 주소가 깨져 있으면 URI 파싱부터 터진다. 그 경우에도 설정값을 그대로 보여 줘야
         // 어디가 잘못됐는지 알 수 있으므로 host 추출 실패는 전체 문자열로 대체한다.
         fun vendorOf(useOllama: Boolean, endpoint: String): String =
