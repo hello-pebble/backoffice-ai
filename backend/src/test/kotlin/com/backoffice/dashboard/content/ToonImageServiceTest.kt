@@ -9,6 +9,7 @@ import org.mockito.ArgumentMatchers.anyDouble
 import org.mockito.ArgumentMatchers.anyInt
 import org.mockito.ArgumentMatchers.anyList
 import org.mockito.ArgumentMatchers.anyLong
+import org.mockito.ArgumentMatchers.anyMap
 import org.mockito.ArgumentMatchers.anyString
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.never
@@ -70,7 +71,7 @@ class ToonImageServiceTest {
     }
 
     private fun queued(vararg panels: Int) {
-        `when`(repository.enqueue(anyString(), anyString(), anyList(), anyLong()))
+        `when`(repository.enqueue(anyString(), anyString(), anyMap(), anyLong()))
             .thenReturn(panels.map { it.toLong() to it })
     }
 
@@ -149,6 +150,21 @@ class ToonImageServiceTest {
             anyString(), anyString(), anyString(), anyList(), anyLong(), anyLong(), anyLong(),
             anyDouble(), anyString(), anyString(), anyArg(),
         )
+    }
+
+    @Test
+    fun `재시작하면 생성중이던 컷을 행에 남은 프롬프트로 이어서 만들고 데모 표시도 되살린다`() {
+        `when`(repository.orphaned(anyInt())).thenReturn(listOf(OrphanedImage(7L, "toon-1", "demo", "남은 프롬프트")))
+        var demoInsideTask: Boolean? = null
+        `when`(llm.image(anyString(), anyString())).thenAnswer { demoInsideTask = DemoContext.isDemo(); image(10) }
+
+        service().resumeOrphans()
+
+        // 대본 문서를 다시 읽지 않는다. 문서 저장소는 데모 격리가 ThreadLocal 이라 여기서는 못 믿는다.
+        verify(toons, never()).list()
+        verify(llm).image("남은 프롬프트", properties.llm.imageModel)
+        verify(repository).complete(7L, "image/png", ByteArray(10))
+        assertEquals(true, demoInsideTask, "데모 컷의 기록이 주인 운영 센터에 섞인다")
     }
 
     @Test

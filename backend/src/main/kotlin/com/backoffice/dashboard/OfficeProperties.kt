@@ -67,6 +67,8 @@ data class OfficeProperties(
         val imageMaxBytes: Int = 6_000_000,
         // 이 시간이 지나도 생성중이면 백엔드가 재시작된 것이다. 화면에 실패로 보이고 다시 시도할 수 있다.
         val imageStaleMinutes: Long = 10,
+        // 재시작 복구가 같은 컷을 다시 잡는 횟수 상한. 사람이 다시 누른 재시도는 세지 않는다.
+        val imageMaxAttempts: Int = 3,
         // 주인 계정의 하루 이미지 상한. 이미지는 장당 실제 돈이 나가고 버튼 연타를 막을 게 없다.
         val imageDailyLimit: Int = 30,
     )

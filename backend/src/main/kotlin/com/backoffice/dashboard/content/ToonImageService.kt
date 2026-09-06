@@ -1,6 +1,8 @@
 package com.backoffice.dashboard.content
 
 import com.backoffice.dashboard.*
+import org.springframework.boot.context.event.ApplicationReadyEvent
+import org.springframework.context.event.EventListener
 import org.springframework.stereotype.Service
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
@@ -34,7 +36,7 @@ class ToonImageService(
         val sessionKey = DemoContext.sessionKey()
         val stale = properties.llm.imageStaleMinutes
 
-        val pending = repository.enqueue(toonId, owner, prompts.keys.sorted(), stale)
+        val pending = repository.enqueue(toonId, owner, prompts, stale)
         // 예산은 enqueue 뒤에 센다. 앞에 두면 이미 완료된 컷까지 세어 실제보다 많이 깎인다.
         if (pending.isNotEmpty()) {
             DemoBudget.consumeImages(
@@ -47,6 +49,19 @@ class ToonImageService(
     }
 
     fun bytes(id: Long): Pair<String, ByteArray>? = repository.bytesOf(id, DemoContext.owner())
+
+    /**
+     * 재시작 전 '생성중'이던 컷을 이어서 만든다. 완료 컷은 조건에 안 걸려 돈을 다시 쓰지 않는다.
+     * 예산은 다시 세지 않는다(처음 enqueue 때 이미 셌다). 데모 격리는 owner 컬럼이 이미 갖고 있고,
+     * runBatch 가 세션 키로 DemoContext 를 켜므로 데모 기록이 주인 운영 센터에 섞이지 않는다.
+     */
+    @EventListener(ApplicationReadyEvent::class)
+    fun resumeOrphans() {
+        repository.orphaned(properties.llm.imageMaxAttempts).groupBy { it.toonId }.forEach { (toonId, rows) ->
+            val sessionKey = if (rows.first().owner == "demo") "recovered" else null
+            pool.submit { runBatch(toonId, sessionKey, rows.map { it.id to it.prompt }) }
+        }
+    }
 
     private fun runBatch(toonId: String, sessionKey: String?, pending: List<Pair<Long, String>>) {
         // DemoMode 주석이 경고한 지점이다. 여기서 다시 켜지 않으면 아래 record 가 문서 저장소를 타면서

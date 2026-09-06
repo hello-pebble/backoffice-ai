@@ -25,6 +25,8 @@ office.llm.image-price-usd=0.02
 office.llm.image-daily-limit=30
 # 이 시간이 지나도 "생성중"이면 백엔드가 재시작된 것으로 보고 실패로 표시합니다.
 office.llm.image-stale-minutes=10
+# 백엔드가 재시작되면 생성중이던 컷을 자동으로 다시 잡습니다. 같은 컷을 몇 번까지 다시 잡을지의 상한입니다.
+office.llm.image-max-attempts=3
 
 # 데모 모드. 로그인 화면의 "데모로 둘러보기" 버튼을 켭니다.
 # 데모는 문서 키에 demo: 를 붙여 실데이터와 분리되고, 허용 목록 밖의 경로는 403 으로 막힙니다.

@@ -7,6 +7,7 @@
 - `app_document.document_key`는 조회 목적의 업무 키이며 `unique` 제약으로 유지한다.
 - 모든 애플리케이션 테이블은 단수형 이름을 사용한다.
 - AI 실행 이력은 `ai_operation_run` 에 한 실행이 한 행이다. 기간·모델 필터와 페이지는 SQL 이 처리하고, 데모 방문자의 실행은 `owner = 'demo'` 로 격리한다(V8 에서 `app_document` 의 JSON 배열을 행으로 옮겼다).
+- 컷 이미지 `toon_image` 는 작업 행 겸 결과 행이다. `(toon_id, panel_number)` 유니크가 중복 실행을 막고, `prompt`·`attempts` 로 백엔드 재시작 뒤 `생성중` 컷을 자동으로 이어 만든다(상한 `office.llm.image-max-attempts`). 별도 큐 테이블은 두지 않는다.
 - 예약어 또는 예약어와 혼동하기 쉬운 이름은 테이블·컬럼명으로 사용하지 않는다.
 
 ## ERD
