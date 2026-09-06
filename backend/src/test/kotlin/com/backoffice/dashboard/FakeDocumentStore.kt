@@ -1,5 +1,6 @@
 package com.backoffice.dashboard
 
+import com.backoffice.dashboard.automation.*
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.mockito.Mockito.mock
 import org.springframework.jdbc.core.JdbcTemplate
