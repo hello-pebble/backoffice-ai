@@ -136,7 +136,8 @@ class AuthService(
 
     companion object {
         /** 데모 보드의 시작 내용. 실데이터를 가공해 넣어 둔 resources 의 demo 폴더 JSON 파일 이름과 같다. */
-        private val DEMO_SEED_KEYS = listOf("ai-news", "ai-news-briefing", "topic-drafts", "content-packages", "ai-operations")
+        // ai-operations 씨앗은 문서가 아니라 행이라 AiOperationsService.seedDemo 가 기동 때 넣는다.
+        private val DEMO_SEED_KEYS = listOf("ai-news", "ai-news-briefing", "topic-drafts", "content-packages")
 
         fun hash(token: String): String =
             MessageDigest.getInstance("SHA-256").digest(token.toByteArray()).joinToString("") { "%02x".format(it) }

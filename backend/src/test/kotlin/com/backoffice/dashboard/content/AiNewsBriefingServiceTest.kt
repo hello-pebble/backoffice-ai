@@ -17,7 +17,7 @@ import kotlin.test.assertTrue
 class AiNewsBriefingServiceTest {
     private val server: HttpServer = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0)
     private val documents = FakeDocumentStore()
-    private val operations = AiOperationsService(documents, RecordingSlackService(), OfficeProperties())
+    private val operations = RecordingAiOperations()
     private val news = mock(AiNewsService::class.java)
 
     @AfterEach fun stop() = server.stop(0)
@@ -66,7 +66,7 @@ class AiNewsBriefingServiceTest {
         assertEquals(listOf("a", "b", "c"), briefing.news.map { it.id })
         assertEquals(briefing, service().get(), "저장까지 끝나야 화면 새로고침에서 보인다")
 
-        val run = operations.overview().items.single()
+        val run = operations.runs.single()
         assertEquals("성공", run.status)
         assertEquals(300, run.inputTokens)
         assertEquals(120, run.outputTokens)
@@ -91,7 +91,7 @@ class AiNewsBriefingServiceTest {
         assertFailsWith<IllegalArgumentException> { service().refresh() }
 
         assertEquals(null, service().get(), "형식이 어긋난 요약은 저장하면 안 된다")
-        assertEquals("실패", operations.overview().items.single().status)
+        assertEquals("실패", operations.runs.single().status)
     }
 
     @Test
@@ -102,7 +102,7 @@ class AiNewsBriefingServiceTest {
         val error = assertFailsWith<IllegalStateException> { service().refresh() }
 
         assertTrue(error.message!!.contains("chat/completions"), "실제 메시지: ${error.message}")
-        val run = operations.overview().items.single()
+        val run = operations.runs.single()
         assertEquals("실패", run.status)
         assertTrue(run.error!!.contains("401"), "실제 기록: ${run.error}")
         assertTrue(run.error!!.contains("127.0.0.1"), "어느 주소로 보냈는지 남아야 원인을 좁힐 수 있다: ${run.error}")

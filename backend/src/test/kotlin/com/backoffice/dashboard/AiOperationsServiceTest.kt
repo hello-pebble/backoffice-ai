@@ -1,22 +1,48 @@
 package com.backoffice.dashboard
 
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.module.kotlin.registerKotlinModule
+import org.flywaydb.core.Flyway
+import org.junit.jupiter.api.AfterAll
+import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.Assumptions.assumeTrue
+import org.junit.jupiter.api.BeforeAll
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.springframework.jdbc.core.JdbcTemplate
+import org.springframework.jdbc.datasource.DriverManagerDataSource
 import java.time.LocalDate
+import java.time.ZoneId
+import javax.sql.DataSource
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
+/**
+ * 실행 이력의 실제 SQL(필터·페이지·집계·데모 격리)을 로컬 Postgres 에 실행한다.
+ * 운영 데이터를 건드리지 않도록 전용 스키마에 마이그레이션을 적용하고 끝나면 지운다. DB 가 없으면 건너뛴다.
+ */
 class AiOperationsServiceTest {
     private val slack = RecordingSlackService()
-    private val store = FakeDocumentStore()
     private val service = AiOperationsService(
-        store, slack,
+        jdbc!!, slack,
         OfficeProperties(slack = OfficeProperties.Slack(reviewBaseUrl = "https://office.example.com")),
+        objectMapper,
     )
 
-    private fun run(id: String, executedAt: String) = AiOperationRun(
-        id = id, executedAt = executedAt, agent = "브리핑", provider = "openai", model = "gpt",
-        status = "성공", durationMs = 1, inputTokens = 0, outputTokens = 0, estimatedCostUsd = 0.0,
-        tools = emptyList(), resultPreview = "",
+    @BeforeEach
+    fun clean() {
+        jdbc!!.update("delete from ai_operation_run")
+    }
+
+    @AfterEach
+    fun clearDemoContext() = DemoContext.clear()
+
+    private fun insertAt(id: String, executedAt: String) = jdbc!!.update(
+        """
+        insert into ai_operation_run (legacy_key, owner, executed_at, agent, provider, model, status, duration_ms,
+                                      input_tokens, output_tokens, estimated_cost_usd, tools, result_preview)
+        values (?, 'owner', cast(? as timestamptz), '브리핑', 'openai', 'gpt', '성공', 1, 0, 0, 0, '[]', '')
+        """.trimIndent(), id, executedAt,
     )
 
     @Test
@@ -30,17 +56,17 @@ class AiOperationsServiceTest {
         val overview = service.overview()
 
         assertEquals(11_000, overview.totalDurationMs)
-        assertEquals(listOf(ModelUsage("gpt-5.6-luna", 2), ModelUsage("llama3.2:1b", 1)), overview.models)
+        assertEquals(4, overview.totalRuns)
+        assertEquals(listOf("gpt-5.6-luna" to 2, "llama3.2:1b" to 1), overview.models.map { it.model to it.runs })
+        assertEquals(4_000, overview.models.first().durationMs)
     }
 
     @Test
     fun `표기만 다른 같은 모델은 한 이름으로 합산한다`() {
         service.record(agent = "브리핑", provider = "openai", model = "OpenAI/GPT-4o ", tools = emptyList(), durationMs = 1)
         service.record(agent = "대본 초안", provider = "openai", model = "gpt-4o", tools = emptyList(), durationMs = 1)
-        // 정규화 전에 저장된 기록도 읽을 때 같은 이름으로 합쳐진다.
-        store.write("ai-operations", service.overview().items + run("legacy", java.time.OffsetDateTime.now().toString()).copy(model = "Gpt-4o"))
 
-        assertEquals(listOf(ModelUsage("gpt-4o", 3)), service.overview().models)
+        assertEquals(listOf("gpt-4o" to 2), service.overview().models.map { it.model to it.runs })
     }
 
     @Test
@@ -56,24 +82,50 @@ class AiOperationsServiceTest {
     }
 
     @Test
-    fun `여섯 달째 달 1일보다 오래된 실행은 읽을 때 걸러진다`() {
-        val firstKeptDay = LocalDate.now().withDayOfMonth(1).minusMonths(5)
-        store.write(
-            "ai-operations",
-            listOf(
-                run("too-old", firstKeptDay.minusDays(1).atStartOfDay().toString() + "+09:00"),
-                run("boundary", firstKeptDay.atStartOfDay().toString() + "+09:00"),
-                // 형식이 깨진 시각은 버리지 않는다. 기록을 잃는 것보다 한 줄 더 보이는 게 낫다.
-                run("unparsable", "언제인지 모름"),
-            ),
-        )
+    fun `기능·모델 필터와 페이지는 DB 가 처리하고 셀렉트 옵션은 전체에서 뽑는다`() {
+        service.record(agent = "브리핑", provider = "openai", model = "gpt", tools = listOf("도구 A"), durationMs = 1)
+        service.record(agent = "브리핑", provider = "openai", model = "gpt", tools = emptyList(), durationMs = 1)
+        service.record(agent = "대본 초안", provider = "google", model = "gemini", tools = emptyList(), durationMs = 1)
 
+        val filtered = service.overview(agent = "브리핑", model = "gpt", size = 1)
+
+        assertEquals(2, filtered.total)
+        assertEquals(1, filtered.items.size, "size=1 이면 한 건만 온다")
+        assertEquals(1, service.overview(agent = "브리핑", size = 1, page = 1).items.size)
+        assertEquals(0, service.overview(agent = "브리핑", size = 1, page = 2).items.size)
+        // 필터를 걸어도 다른 선택지가 사라지면 안 된다.
+        assertEquals(listOf("대본 초안", "브리핑"), filtered.agents)
+        assertEquals(listOf("gemini", "gpt"), filtered.modelNames)
+        assertEquals(listOf(LocalDate.now().toString().substring(0, 7)), filtered.months)
+        // 도구 목록은 jsonb 로 갔다가 그대로 돌아온다. 가장 먼저 기록한 실행이 마지막 페이지다.
+        assertEquals(listOf("도구 A"), service.overview(agent = "브리핑", page = 1, size = 1).items.single().tools)
+    }
+
+    @Test
+    fun `데모 실행은 데모에게만 보이고 주인 이력에 섞이지 않는다`() {
+        service.record(agent = "브리핑", provider = "openai", model = "gpt", tools = emptyList(), durationMs = 1)
+        DemoContext.set("세션-해시")
+        service.record(agent = "데모 브리핑", provider = "openai", model = "gpt", tools = emptyList(), durationMs = 1)
+
+        assertEquals(listOf("데모 브리핑"), service.overview().items.map { it.agent })
+        DemoContext.clear()
+        assertEquals(listOf("브리핑"), service.overview().items.map { it.agent })
+    }
+
+    @Test
+    fun `여섯 달째 달 1일보다 오래된 실행은 어떤 기간을 골라도 빠진다`() {
+        val firstKeptDay = LocalDate.now().withDayOfMonth(1).minusMonths(5)
+        val offset = ZoneId.systemDefault().rules.getOffset(firstKeptDay.atStartOfDay())
+        insertAt("too-old", firstKeptDay.minusDays(1).atStartOfDay().toString() + offset)
+        insertAt("boundary", firstKeptDay.atStartOfDay().toString() + offset)
         service.record(agent = "브리핑", provider = "openai", model = "gpt", tools = emptyList(), durationMs = 1)
 
-        val ids = service.overview().items.map { it.id }
-        assertEquals(3, ids.size)
+        val ids = service.overview(range = "all").items.map { it.id }
+
+        assertEquals(2, ids.size)
         assertTrue("too-old" !in ids, "여섯 달째 달 1일 이전은 사라져야 한다")
-        assertTrue("boundary" in ids && "unparsable" in ids)
+        assertTrue("boundary" in ids)
+        assertEquals(1, service.overview(range = "today").items.size)
     }
 
     @Test
@@ -100,5 +152,41 @@ class AiOperationsServiceTest {
         service.record(agent = "브리핑", provider = "openai", model = "gpt", tools = emptyList(), durationMs = 10, status = "실패", error = "boom")
 
         assertEquals("boom", service.overview().items.single().error)
+    }
+
+    companion object {
+        private const val SCHEMA = "ai_operations_test"
+        private val objectMapper = ObjectMapper().registerKotlinModule()
+        private var jdbc: JdbcTemplate? = null
+        private var dataSource: DataSource? = null
+
+        private fun dataSource(schema: String?) = DriverManagerDataSource(
+            System.getenv("SUPABASE_DB_URL") ?: "jdbc:postgresql://127.0.0.1:5432/backoffice",
+            System.getenv("SUPABASE_DB_USER") ?: "postgres",
+            System.getenv("SUPABASE_DB_PASSWORD") ?: "postgres",
+        ).apply {
+            setDriverClassName("org.postgresql.Driver")
+            schema?.let { setSchema(it) }
+        }
+
+        @BeforeAll
+        @JvmStatic
+        fun migrate() {
+            val plain = dataSource(schema = null)
+            val reachable = runCatching { plain.connection.use { it.isValid(3) } }.getOrElse { false }
+            assumeTrue(reachable, "로컬 Postgres 에 연결할 수 없어 건너뜁니다. docker 의 backoffice-pg 를 띄운 뒤 다시 실행하세요.")
+            Flyway.configure().dataSource(plain).schemas(SCHEMA).cleanDisabled(false).load().apply {
+                clean()
+                migrate()
+            }
+            dataSource = plain
+            jdbc = JdbcTemplate(dataSource(schema = SCHEMA))
+        }
+
+        @AfterAll
+        @JvmStatic
+        fun dropSchema() {
+            dataSource?.let { JdbcTemplate(it).execute("drop schema if exists $SCHEMA cascade") }
+        }
     }
 }

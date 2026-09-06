@@ -42,7 +42,7 @@ class PythonAutomationServiceTest {
     @Test
     fun `워커가 돌려준 AI_USAGE 줄을 운영 센터에 기록하고 출력에서 지운다`() {
         val properties = OfficeProperties()
-        val operations = AiOperationsService(FakeDocumentStore(), RecordingSlackService(), properties)
+        val operations = RecordingAiOperations(properties = properties)
         val service = PythonAutomationService(properties, 5, ObjectMapper(), operations, LlmClient(properties, ObjectMapper()))
         val output = listOf(
             "콘텐츠 생성 완료: 2개",
@@ -53,7 +53,7 @@ class PythonAutomationServiceTest {
 
         // 사용량 줄은 사람이 볼 출력이 아니다.
         assertEquals("콘텐츠 생성 완료: 2개", response.output)
-        val run = operations.overview().items.single()
+        val run = operations.runs.single()
         assertEquals("gpt-3.5-turbo", run.model)
         assertEquals(1_200, run.inputTokens)
         assertEquals(3_400, run.outputTokens)
@@ -64,12 +64,12 @@ class PythonAutomationServiceTest {
     @Test
     fun `AI_USAGE 줄이 없으면 아무것도 기록하지 않는다`() {
         val properties = OfficeProperties()
-        val operations = AiOperationsService(FakeDocumentStore(), RecordingSlackService(), properties)
+        val operations = RecordingAiOperations(properties = properties)
         val service = PythonAutomationService(properties, 5, ObjectMapper(), operations, LlmClient(properties, ObjectMapper()))
 
         val response = service.recordUsage("keyword", AutomationResponse(true, 0, "키워드 수집 완료: 5개"), 1_000)
 
         assertEquals("키워드 수집 완료: 5개", response.output)
-        assertTrue(operations.overview().items.isEmpty())
+        assertTrue(operations.runs.isEmpty())
     }
 }

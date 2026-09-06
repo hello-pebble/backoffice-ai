@@ -14,7 +14,7 @@ import kotlin.test.assertTrue
 class AiNewsServiceTest {
     private val server: HttpServer = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0)
     private val documents = FakeDocumentStore()
-    private val operations = AiOperationsService(documents, RecordingSlackService(), OfficeProperties())
+    private val operations = RecordingAiOperations()
 
     @AfterEach fun stop() = server.stop(0)
 
@@ -104,7 +104,7 @@ class AiNewsServiceTest {
         val items = service("죽은 소식원|${url("/none-1")}", "죽은 소식원2|${url("/none-2")}").refresh()
 
         assertTrue(items.isEmpty())
-        val run = operations.overview().items.single()
+        val run = operations.runs.single()
         assertTrue(run.resultPreview.contains("가져오지 못했습니다"), "실제 기록: ${run.resultPreview}")
     }
 
@@ -115,6 +115,6 @@ class AiNewsServiceTest {
         val items = service("살아있는 소식원|${url("/rss")}", "죽은 소식원|${url("/none")}").refresh()
 
         assertEquals(1, items.size)
-        assertTrue(operations.overview().items.single().resultPreview.contains("1건"))
+        assertTrue(operations.runs.single().resultPreview.contains("1건"))
     }
 }

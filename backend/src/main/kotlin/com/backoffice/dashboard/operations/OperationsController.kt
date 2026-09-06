@@ -59,8 +59,15 @@ class OperationsController(
     @PatchMapping("/approvals/{id}/status")
     fun updateApproval(@PathVariable id: String, @RequestBody request: ChangeStatusRequest) = operationsService.changeApproval(id, request)
 
+    /** 필터·페이지는 전부 서버가 한다. range 는 today · 7d · YYYY-MM, 비우면 보관 기간 전체. */
     @GetMapping("/ai-operations")
-    fun aiOperations() = aiOperationsService.overview()
+    fun aiOperations(range: String?, agent: String?, model: String?, page: Int?, size: Int?) = aiOperationsService.overview(
+        range = range ?: "today",
+        agent = agent?.ifBlank { null },
+        model = model?.ifBlank { null },
+        page = (page ?: 0).coerceAtLeast(0),
+        size = (size ?: AiOperationsService.PAGE_SIZE).coerceIn(1, 100),
+    )
 
     // 워커(Python)가 DB 에 직접 쓰지 않고 결과만 넘긴다. 스키마를 아는 곳은 백엔드 하나다.
     @PostMapping("/worker/keywords")
