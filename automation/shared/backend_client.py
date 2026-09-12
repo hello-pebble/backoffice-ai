@@ -7,6 +7,7 @@ Kotlin 과 Python 양쪽의 SQL 을 같이 고쳐야 했고, 한쪽만 고치면
 표준 라이브러리만 쓴다(requests 는 워커에 이미 있지만 여기서는 필요 없다).
 """
 import json
+import re
 import urllib.error
 import urllib.request
 from typing import Any, Dict, List
@@ -54,11 +55,16 @@ class BackendClient:
         """아침 점검 전 소식·요약·초안을 백엔드가 미리 만들게 한다. 단계별 결과를 돌려받는다."""
         return self._request("POST", "/api/worker/morning-prep")
 
+    @staticmethod
+    def _camel(body: Dict[str, Any]) -> Dict[str, Any]:
+        """워커는 search_volume 처럼 쓰고 백엔드 요청 클래스는 searchVolume 을 읽는다. 여기서 한 번에 맞춘다."""
+        return {re.sub(r"_([a-z])", lambda m: m.group(1).upper(), k): v for k, v in body.items()}
+
     def _request(self, method: str, path: str, body: Dict[str, Any] | None = None):
         request = urllib.request.Request(
             f"{self.base_url}{path}",
             method=method,
-            data=json.dumps(body, ensure_ascii=False).encode("utf-8") if body is not None else None,
+            data=json.dumps(self._camel(body), ensure_ascii=False).encode("utf-8") if body is not None else None,
             headers={
                 "Content-Type": "application/json; charset=utf-8",
                 "X-Worker-API-Key": WORKER_API_KEY,
