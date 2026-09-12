@@ -36,7 +36,7 @@ office.demo.enabled=false
 office.demo.session-hours=2
 office.demo.llm-daily-limit=30
 # 방문자 한 명이 쓸 수 있는 횟수. 인스타툰·주제 초안·핵심 요약을 합쳐서 셉니다.
-office.demo.llm-session-limit=5
+office.demo.llm-session-limit=10
 # 데모 이미지 상한. 주인 상한과 카운터가 따로라 서로를 막지 않습니다.
 office.demo.image-daily-limit=8
 office.demo.image-session-limit=4
