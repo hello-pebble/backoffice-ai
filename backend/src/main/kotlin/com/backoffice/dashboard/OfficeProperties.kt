@@ -21,7 +21,7 @@ data class OfficeProperties(
         // URL 을 아는 누구나 부를 수 있다. 이 값이 곧 하루 비용 상한이다.
         val llmDailyLimit: Int = 30,
         // 한 방문자가 하루치를 다 쓰지 못하게 한다. 인스타툰·주제 초안·핵심 요약을 합쳐서 센다.
-        val llmSessionLimit: Int = 5,
+        val llmSessionLimit: Int = 10,
         // 이미지는 주인 상한과 카운터를 나눈다. 합치면 주인이 몇 장 쓴 순간 데모가 통째로 막힌다.
         val imageDailyLimit: Int = 8,
         val imageSessionLimit: Int = 4,
