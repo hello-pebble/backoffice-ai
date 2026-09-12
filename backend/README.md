@@ -10,7 +10,8 @@ Kotlin/Spring Boot 웹 서버입니다. 화면이 쓰는 모든 API를 제공하
 - **최신 소식**: 공식 RSS/Atom 수집과 핵심 3건 요약(LLM).
 - **주제 대본 초안**: 수집한 소식과 자동화 키워드 중 우선순위가 가장 높은 주제로 45~60초 숏폼 대본을 만듭니다. 검토 대기 상태로 저장하고 Slack에는 검토 링크만 보냅니다.
 - **인스타툰 대본과 컷 이미지**: 에피소드 한 줄에서 4·8컷 대본(장면·대사·나레이션·이미지 프롬프트)을 만들고, 그 프롬프트로 Google Imagen 이미지를 생성해 화면에서 바로 봅니다.
-- **콘텐츠 생성 에이전트**: 원본 하나로 체크한 채널마다 그 채널의 에이전트를 순차 실행합니다. 인스타툰은 `InstagramToonService`, 쇼츠는 `TopicDraftService`를 그대로 써서 각 목록에도 저장되고, 블로그는 `automation_content`에 검토 대기로 들어가 워커가 발행할 수 있습니다. 카드뉴스는 모델을 한 번 부릅니다. 한 채널이 실패해도 나머지는 저장됩니다.
+- **콘텐츠 생성 에이전트**: 원본 하나로 체크한 채널마다 그 채널의 에이전트를 순차 실행합니다. 인스타툰은 `InstagramToonService`, 쇼츠는 `TopicDraftService`를 그대로 써서 각 목록에도 저장되고, 블로그는 `automation_content`에 검토 대기로 들어가 워커가 발행할 수 있습니다. 카드뉴스는 모델을 한 번 부릅니다. 요청은 모든 채널을 `생성중`으로 저장하고 바로 202로 끝나며, 백그라운드 스레드가 채널을 하나씩 채웁니다(화면은 목록 API 폴링). 한 채널이 실패해도 나머지는 계속 돌고, 재시작으로 끊긴 `생성중`은 실패로만 표시합니다.
+- **아침 사전 준비**: 워커 크론(`MORNING_PREP_TIME`)이 `POST /api/worker/morning-prep`를 불러 소식 수집 → 핵심 3건 요약 → 주제 초안을 순서대로 만들어 둡니다. 한 단계가 실패해도 다음 단계는 돕니다.
 - **외부 정보**: Gmail 읽기 전용 요약과 토스증권 국내 관심 종목 현재가.
 - **데모 모드**: 로그인 없이 둘러보는 모드. 아래 별도 절 참고.
 
@@ -19,16 +20,14 @@ Kotlin/Spring Boot 웹 서버입니다. 화면이 쓰는 모든 API를 제공하
 
 ## 구성
 
-`src/main/kotlin/com/backoffice/dashboard/`에 패키지 구분 없이 파일 단위로 모여 있습니다.
+`src/main/kotlin/com/backoffice/dashboard/`는 루트의 공용 파일과 기능별 패키지 4개로 나뉩니다.
 
-- `DashboardApplication.kt`: Spring Boot 엔트리포인트. 컨테이너 타임존과 무관하게 기록 시각이 한국시간이 되도록 JVM 기본 타임존을 여기서 한 번 고정합니다.
-- `DashboardController.kt`: `/api/**` 전체를 처리하는 REST 컨트롤러
-- `LlmClient.kt`: 모델 호출을 모은 곳. OpenAI 호환 chat, Ollama, Google Imagen(`:predict`)을 여기서만 부르고 타임아웃·재시도·오류 문구·단가를 관리합니다.
-- `*Service.kt`: 도메인별 서비스 — `AiNewsService`, `AiNewsBriefingService`, `AiOperationsService`, `TopicDraftService`, `InstagramToonService`, `ToonImageService`, `ContentStudioService`, `GmailService`, `TossService`, `SlackService`, `AuthService`, `OperationsService`, `PythonAutomationService`
-- `JsonDocumentStore.kt`, `AutomationRepository.kt`, `ToonImageRepository.kt`: 데이터 저장(Postgres)
-- `DemoMode.kt`: 데모 요청 표시(`DemoContext`)와 실행·이미지 상한(`DemoBudget`)
-- `SessionAuthFilter.kt`, `WorkerAuthFilter.kt`, `CorsConfiguration.kt`, `ApiErrorHandler.kt`: 인증·CORS·에러 처리
-- `src/main/resources/db/migration/`: Flyway 마이그레이션 V1~V7 (스키마 생성 → task → feature 테이블 → 네이밍·soft-delete 정리 → 컷 이미지 테이블)
+- 루트(공용): `DashboardApplication.kt`(엔트리포인트. 컨테이너 타임존과 무관하게 기록 시각이 한국시간이 되도록 JVM 기본 타임존을 한 번 고정), `LlmClient.kt`(OpenAI 호환 chat·Ollama·Google Imagen `:predict`를 여기서만 부르고 타임아웃·재시도·오류 문구·단가·JSON 폴백 파싱을 관리), `AiOperationsService.kt`(AI 실행 이력, 실패 Slack 알림), `JsonDocumentStore.kt`(jsonb 문서 저장소), `DemoMode.kt`(`DemoContext`·`DemoBudget`), `OfficeProperties.kt`, `ApiErrorHandler.kt`, `CorsConfiguration.kt`
+- `auth/`: Google 로그인·세션(`AuthController`, `AuthService`), `SessionAuthFilter`, `WorkerAuthFilter`(`/api/worker/*` API 키), `GmailTokenStore`
+- `content/`: `ContentController` 아래 `ContentStudioService`(채널 오케스트레이터), `TopicDraftService`, `InstagramToonService`, `ToonImageService`·`ToonImageRepository`, `AiNewsService`, `AiNewsBriefingService`
+- `operations/`: `OperationsController` 아래 `OperationsService`, `GmailService`, `TossService`, `AutomationRepository`(키워드·콘텐츠 큐)
+- `automation/`: `AutomationController` 아래 `PythonAutomationService`(워커 HTTP 위임), `SlackService`
+- `src/main/resources/db/migration/`: Flyway 마이그레이션 V1~V9 (스키마 생성 → task → feature 테이블 → 네이밍·soft-delete 정리 → 컷 이미지 테이블 → 실행 이력 행 전환 → 컷 attempts)
 
 Python 자동화 실행은 `PythonAutomationService`가 `automation/worker_api.py`에 HTTP로 위임합니다(로컬에서는 프로세스를 직접 띄웁니다).
 
