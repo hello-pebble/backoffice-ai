@@ -23,10 +23,17 @@ class AutomationRepository(private val jdbc: JdbcTemplate, private val objectMap
             ).firstOrNull() ?: throw IllegalArgumentException("키워드를 찾을 수 없습니다: ${request.id}")
         }
         require(request.keyword.isNotBlank()) { "키워드가 비어 있습니다." }
+        // 같은 키워드가 다시 오면(7일 창 트렌드) 새 행 대신 검색량·우선순위만 올리고 used 는 그대로 둔다.
+        // 이미 대본을 만든 키워드가 다시 유행해도 또 만들지 않는다.
         return jdbc.queryForObject(
             """
             insert into automation_keyword (keyword, search_volume, category, collected_at, used, priority)
-            values (?, ?, ?, cast(? as timestamptz), ?, ?) returning id
+            values (?, ?, ?, cast(? as timestamptz), ?, ?)
+            on conflict (lower(keyword)) where lifecycle_state = 'active' do update
+            set search_volume = greatest(automation_keyword.search_volume, excluded.search_volume),
+                priority = greatest(automation_keyword.priority, excluded.priority),
+                collected_at = excluded.collected_at
+            returning id
             """.trimIndent(),
             Long::class.java,
             request.keyword, request.searchVolume, request.category, request.collectedDate ?: now, request.used, request.priority,

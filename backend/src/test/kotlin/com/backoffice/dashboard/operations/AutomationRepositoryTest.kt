@@ -54,6 +54,18 @@ class AutomationRepositoryTest {
     }
 
     @Test
+    fun `같은 키워드를 다시 넣으면 새 행 없이 검색량만 오르고 사용 여부는 유지된다`() {
+        val id = repository.saveKeyword(SaveKeywordRequest(keyword = "AI 에이전트", searchVolume = 100, priority = 1))
+        repository.markKeywordUsed(id)
+
+        val again = repository.saveKeyword(SaveKeywordRequest(keyword = "ai 에이전트", searchVolume = 5000, priority = 3))
+
+        assertEquals(id, again, "대소문자만 달라도 같은 키워드다")
+        assertEquals(emptyList(), repository.unusedKeywords(10).map { it.keyword }, "이미 쓴 키워드는 다시 유행해도 후보로 돌아오지 않는다")
+        assertEquals(1, jdbc!!.queryForObject("select count(*) from automation_keyword where lifecycle_state = 'active'", Int::class.java))
+    }
+
+    @Test
     fun `없는 키워드를 갱신하면 거부한다`() {
         assertFailsWith<IllegalArgumentException> { repository.saveKeyword(SaveKeywordRequest(id = 999_999, used = true)) }
     }
