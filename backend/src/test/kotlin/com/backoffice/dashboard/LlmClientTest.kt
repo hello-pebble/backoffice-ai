@@ -18,6 +18,15 @@ class LlmClientTest {
     }
 
     @Test
+    fun `앞뒤에 설명 문장이 붙은 응답에서도 JSON 블록만 뽑는다`() {
+        val mapper = com.fasterxml.jackson.databind.ObjectMapper()
+        assertEquals("제목", LlmClient.jsonOf(mapper, """{"title":"제목"}""").path("title").asText())
+        assertEquals("제목", LlmClient.jsonOf(mapper, "물론입니다! 결과:\n```json\n{\"title\":\"제목\"}\n```\n도움이 되길.").path("title").asText())
+        val error = kotlin.test.assertFailsWith<IllegalStateException> { LlmClient.jsonOf(mapper, "JSON 없이 설명만 있는 답") }
+        assertEquals("모델이 JSON 형식을 만들지 못했습니다. 더 큰 모델을 쓰거나 다시 시도하세요.", error.message)
+    }
+
+    @Test
     fun `버전 경로가 이미 있으면 그대로 이어 붙인다`() {
         // 워커의 OPENAI_BASE_URL 과 같은 값을 넣는 경우. /v1 을 또 붙이면 404 가 난다.
         assertEquals("https://integrate.api.nvidia.com/v1/chat/completions", url("https://integrate.api.nvidia.com/v1"))

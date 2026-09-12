@@ -1,5 +1,6 @@
 package com.backoffice.dashboard
 
+import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
@@ -157,6 +158,16 @@ class LlmClient(private val properties: OfficeProperties, private val objectMapp
          * 운영 센터에서 두 줄로 갈라지고 단가도 못 찾는다. 제공자에 보내는 이름은 바꾸지 않는다.
          */
         fun canonicalModel(name: String): String = name.trim().substringAfterLast('/').lowercase()
+
+        /**
+         * "반드시 JSON만" 이라고 해도 JSON 모드를 무시하고 앞뒤에 설명 문장을 붙이는 호환 제공자가 있다.
+         * 첫 중괄호 블록만 다시 시도한다. 세 서비스가 각자 들고 있던 규칙을 여기 한 곳으로 모았다.
+         */
+        fun jsonOf(objectMapper: ObjectMapper, content: String): JsonNode =
+            runCatching { objectMapper.readTree(content) }
+                // 중괄호가 아예 없으면 "{}" 로 통과해 빈 객체가 되고, 서비스는 "cards 가 없습니다" 같은 엉뚱한 사유를 남긴다.
+                .recoverCatching { check('{' in content && '}' in content); objectMapper.readTree("{" + content.substringAfter('{').substringBeforeLast('}') + "}") }
+                .getOrElse { throw IllegalStateException("모델이 JSON 형식을 만들지 못했습니다. 더 큰 모델을 쓰거나 다시 시도하세요.") }
 
         // 주소가 깨져 있으면 URI 파싱부터 터진다. 그 경우에도 설정값을 그대로 보여 줘야
         // 어디가 잘못됐는지 알 수 있으므로 host 추출 실패는 전체 문자열로 대체한다.

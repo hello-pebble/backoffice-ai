@@ -44,7 +44,7 @@ class TopicDraftService(
         val candidate = listOfNotNull(newsCandidate, keywordCandidate).maxByOrNull { it.priorityScore }
             ?: throw IllegalArgumentException("초안으로 만들 새 주제가 없습니다. 소식원이나 키워드가 갱신된 뒤 다시 시도하세요.")
         val (usage, script) = try {
-            generate(candidate, target)
+            generate(candidate)
         } catch (error: Exception) {
             val reason = LlmClient.reasonOf(error)
             aiOperationsService.record(
@@ -74,6 +74,34 @@ class TopicDraftService(
             inputTokens = usage.inputTokens,
             outputTokens = usage.outputTokens,
             estimatedCostUsd = usage.costUsd,
+            resultPreview = "${draft.title} · 검토 대기 초안을 저장했습니다.",
+        )
+        return draft
+    }
+
+    /** 콘텐츠 스튜디오가 원본 텍스트로 쇼츠 대본을 만들 때 쓴다. 저장·Slack·기록은 refresh 와 같다. */
+    @Synchronized
+    fun draftFromText(title: String, source: String): TopicDraft {
+        val startedAt = System.nanoTime()
+        val target = llm.target()
+        val candidate = DraftSource.fromText(title, source)
+        val (usage, script) = try {
+            generate(candidate)
+        } catch (error: Exception) {
+            val reason = LlmClient.reasonOf(error)
+            aiOperationsService.record(
+                agent = "주제 대본 초안 에이전트", provider = target.vendor, model = target.model,
+                tools = listOf(candidate.toolLabel, llm.toolLabel(target)),
+                durationMs = (System.nanoTime() - startedAt) / 1_000_000, status = "실패", error = "${target.endpoint} → $reason",
+            )
+            throw IllegalStateException("대본 초안 생성에 실패했습니다 (${target.endpoint}): $reason", error)
+        }
+        val draft = persist(candidate, script, target.model, OffsetDateTime.now())
+        aiOperationsService.record(
+            agent = "주제 대본 초안 에이전트", provider = target.vendor, model = target.model,
+            tools = listOf(candidate.toolLabel, llm.toolLabel(target), "Slack 알림 · ${draft.slackStatus}"),
+            durationMs = (System.nanoTime() - startedAt) / 1_000_000,
+            inputTokens = usage.inputTokens, outputTokens = usage.outputTokens, estimatedCostUsd = usage.costUsd,
             resultPreview = "${draft.title} · 검토 대기 초안을 저장했습니다.",
         )
         return draft
@@ -125,7 +153,7 @@ class TopicDraftService(
 
     private fun reviewUrl(id: String): String = "${properties.slack.reviewBaseUrl.trim().trimEnd('/')}/#topic-draft-$id"
 
-    private fun generate(source: DraftSource, target: LlmTarget): Pair<LlmResponse, TopicScript> {
+    private fun generate(source: DraftSource): Pair<LlmResponse, TopicScript> {
         val prompt = """다음 내용 하나를 소개하는 한국어 숏폼 검토 대본을 작성하세요.
 읽어서 45~60초 분량(공백 포함 550~750자)으로 씁니다.
 ${source.guardrail}
@@ -134,14 +162,11 @@ ${source.guardrail}
 제목=${source.sourceTitle}
 ${source.context}"""
         val response = llm.chat("당신은 사실을 과장하지 않는 한국어 숏폼 대본 작가입니다.", prompt)
-        return response to parseScript(response.content, if (target.useOllama) "로컬 모델" else "AI 모델")
+        return response to parseScript(response.content)
     }
 
-    private fun parseScript(content: String, modelLabel: String): TopicScript {
-        // JSON 모드를 무시하고 설명 문장을 앞뒤에 붙이는 호환 제공자가 있다. 첫 중괄호 블록만 다시 시도한다.
-        val node = runCatching { objectMapper.readTree(content) }
-            .recoverCatching { objectMapper.readTree(content.substringAfter('{', "").substringBeforeLast('}', "").let { "{$it}" }) }
-            .getOrElse { throw IllegalStateException("${modelLabel}이 JSON 형식을 만들지 못했습니다. 더 큰 모델을 쓰거나 다시 시도하세요.") }
+    private fun parseScript(content: String): TopicScript {
+        val node = LlmClient.jsonOf(objectMapper, content)
         val title = node.path("title").asText("").trim()
         val hook = node.path("hook").asText("").trim()
         val script = node.path("script").asText("").trim()
@@ -201,6 +226,7 @@ data class DraftSource(
     companion object {
         private const val NEWS_GUARDRAIL = "아래 제목·요약·주소에 있는 내용만 근거로 삼고, 원문에 없는 수치·기능·출시일·추측은 만들지 마세요."
         private const val KEYWORD_GUARDRAIL = "키워드와 관련해 일반적으로 알려진 사실만 사용하고, 확인되지 않는 수치·통계·최신 소식은 만들지 마세요."
+        private const val TEXT_GUARDRAIL = "아래 원본에 있는 내용만 근거로 삼고, 원본에 없는 수치·기능·추측은 만들지 마세요."
 
         fun fromNews(item: AiNewsItem, now: OffsetDateTime): DraftSource = DraftSource(
             sourceId = item.id,
@@ -212,6 +238,18 @@ data class DraftSource(
             guardrail = NEWS_GUARDRAIL,
             context = "요약=${item.summary}\n주소=${item.url}\n출처=${item.source}",
             toolLabel = "AI 뉴스 수집",
+        )
+
+        fun fromText(title: String, source: String): DraftSource = DraftSource(
+            sourceId = "studio-${UUID.randomUUID()}",
+            source = "콘텐츠 스튜디오",
+            sourceTitle = title,
+            sourceUrl = "",
+            category = "스튜디오",
+            priorityScore = 0.0,
+            guardrail = TEXT_GUARDRAIL,
+            context = "원본=$source",
+            toolLabel = "콘텐츠 스튜디오 원본",
         )
 
         fun fromKeyword(item: AutomationKeyword): DraftSource = DraftSource(

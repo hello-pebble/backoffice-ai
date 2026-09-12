@@ -30,12 +30,27 @@ class ContentController(
     @GetMapping("/content-packages")
     fun contentPackages() = contentStudioService.list()
 
+    /** 채널을 백그라운드에서 채운다. 잡아 두고 바로 202, 채널별 진행 상태는 목록 조회로 본다. */
     @PostMapping("/content-packages")
+    @ResponseStatus(HttpStatus.ACCEPTED)
     fun createContentPackage(@RequestBody request: CreateContentPackageRequest): ContentPackage = try {
         contentStudioService.create(request)
     } catch (error: IllegalArgumentException) {
         throw ResponseStatusException(HttpStatus.BAD_REQUEST, error.message)
     }
+
+    /**
+     * 아침 점검 전에 워커 크론이 한 번 부른다. 소식 수집 → 핵심 3건 요약 → 주제 초안 순서.
+     * 한 단계가 실패해도 다음 단계는 돈다. 실패 알림은 각 서비스의 운영 센터 기록이 이미 Slack 으로 보낸다.
+     */
+    @PostMapping("/worker/morning-prep")
+    fun morningPrep(): Map<String, String> = linkedMapOf(
+        "news" to step { aiNewsService.refresh() },
+        "briefing" to step { aiNewsBriefingService.refresh() },
+        "topicDraft" to step { topicDraftService.refresh() },
+    )
+
+    private fun step(block: () -> Any?): String = runCatching { block() }.fold({ "성공" }, { "실패: ${LlmClient.reasonOf(it)}" })
 
     /** 이미지는 1~3분 걸려 기다리지 않는다. 잡아 두고 바로 202, 진행 상태는 목록 조회로 본다. */
     @PostMapping("/instagram-toons/{id}/images")

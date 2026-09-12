@@ -41,6 +41,10 @@ class BackendClient:
         self._request("POST", "/api/worker/posting-records", data)
         return True
 
+    def morning_prep(self) -> Dict[str, str]:
+        """아침 점검 전 소식·요약·초안을 백엔드가 미리 만들게 한다. 단계별 결과를 돌려받는다."""
+        return self._request("POST", "/api/worker/morning-prep")
+
     def _request(self, method: str, path: str, body: Dict[str, Any] | None = None):
         request = urllib.request.Request(
             f"{self.base_url}{path}",
