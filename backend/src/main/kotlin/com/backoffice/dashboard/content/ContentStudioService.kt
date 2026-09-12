@@ -45,7 +45,7 @@ class ContentStudioService(
         require(channels.isNotEmpty()) { "만들 콘텐츠 채널을 하나 이상 선택하세요." }
         val source = request.source.trim()
         val title = source.replace(Regex("\\s+"), " ").take(34).trimEnd(' ', '.', '。')
-        // 데모는 키워드를 읽지도 소진하지도 않는다.
+        // 데모는 키워드를 읽을 수는 있어도 소진하지 않는다. 방문자가 주인의 키워드를 써 버리면 안 된다.
         val req = request.copy(
             source = source, tone = request.tone.ifBlank { "공감형" }, target = request.target.ifBlank { "관심 고객" },
             keywordId = if (DemoContext.isDemo()) null else request.keywordId,
