@@ -66,6 +66,19 @@ class TopicDraftServiceTest {
     }
 
     @Test
+    fun `원본 텍스트 후보는 콘텐츠 스튜디오 출처로 저장된다`() {
+        val service = service()
+        val script = TopicScript("영상 제목", "3초 훅", "대본 전문", listOf("#AI"))
+
+        val draft = service.persist(DraftSource.fromText("제목", "원본 본문입니다."), script, "gpt-test", now)
+
+        assertEquals("콘텐츠 스튜디오", draft.source)
+        assertTrue(draft.sourceId.startsWith("studio-"))
+        assertEquals("REVIEW_PENDING", draft.reviewStatus)
+        assertEquals(draft.id, service.list().single().id)
+    }
+
+    @Test
     fun `Slack 이 연결되지 않아도 초안은 검토 대기 상태로 저장된다`() {
         val service = service()
         val script = TopicScript("영상 제목", "3초 훅", "대본 전문", listOf("#AI"))
