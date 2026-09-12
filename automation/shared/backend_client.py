@@ -41,6 +41,15 @@ class BackendClient:
         self._request("POST", "/api/worker/posting-records", data)
         return True
 
+    def get_contents(self, status: str = "approved", limit: int = 10) -> List[Dict[str, Any]]:
+        """발행할 글. 백엔드는 승인된 것만 준다."""
+        return self._request("GET", f"/api/worker/contents?status={status}&limit={int(limit)}")
+
+    def update_content_status(self, content_id: str, status: str, posted_date: str | None = None) -> bool:
+        """상태만 바꾼다. save_content 는 본문까지 덮어써서 상태 갱신에 쓰면 글이 비워진다."""
+        self._request("PATCH", f"/api/worker/contents/{content_id}", {"status": status, "postedDate": posted_date})
+        return True
+
     def morning_prep(self) -> Dict[str, str]:
         """아침 점검 전 소식·요약·초안을 백엔드가 미리 만들게 한다. 단계별 결과를 돌려받는다."""
         return self._request("POST", "/api/worker/morning-prep")

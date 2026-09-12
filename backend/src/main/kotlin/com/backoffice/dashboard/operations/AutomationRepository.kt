@@ -79,6 +79,34 @@ class AutomationRepository(private val jdbc: JdbcTemplate, private val objectMap
         )
     }
 
+    /**
+     * 상태만 바꾼다. saveContent 의 upsert 는 keyword·title·content 까지 excluded 로 덮어써서,
+     * 상태만 들고 부르면 본문이 빈 문자열이 된다. 승인·반려·발행 완료는 전부 여기로 온다.
+     */
+    fun updateContentStatus(id: String, status: String, postedDate: String? = null) {
+        requireUuid(id, "콘텐츠 id")
+        val updated = jdbc.update(
+            "update automation_content set status = ?, posted_at = coalesce(cast(? as timestamptz), posted_at) where legacy_key = cast(? as uuid) and lifecycle_state = 'active'",
+            status, postedDate, id,
+        )
+        require(updated == 1) { "콘텐츠를 찾을 수 없습니다: $id" }
+    }
+
+    /** 워커가 발행할 글. 승인된 것만 준다(status=approved). */
+    fun contentsByStatus(status: String, limit: Int): List<AutomationContent> = jdbc.query(
+        """
+        select legacy_key, keyword, title, content, tags from automation_content
+        where status = ? and lifecycle_state = 'active' order by created_at limit ?
+        """.trimIndent(),
+        { rs, _ ->
+            AutomationContent(
+                id = rs.getString("legacy_key"), keyword = rs.getString("keyword"), title = rs.getString("title"),
+                content = rs.getString("content"), tags = objectMapper.readValue(rs.getString("tags"), Array<String>::class.java).toList(),
+            )
+        },
+        status, limit,
+    )
+
     /** 발행 기록은 원본 콘텐츠가 있을 때만 남는다. 없는 글의 기록이 생기면 추적이 끊긴다. */
     fun savePostingRecord(request: SavePostingRecordRequest) {
         requireUuid(request.id, "발행 기록 id")
@@ -130,6 +158,9 @@ data class SaveContentRequest(
     val status: String = "pending",
     val postedDate: String? = null,
 )
+
+data class AutomationContent(val id: String, val keyword: String, val title: String, val content: String, val tags: List<String>)
+data class UpdateContentStatusRequest(val status: String = "", val postedDate: String? = null)
 
 data class SavePostingRecordRequest(
     val id: String = "",

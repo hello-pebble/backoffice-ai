@@ -91,6 +91,12 @@ class ContentControllerTest {
     }
 
     @Test
+    fun `검토 상태가 잘못되면 400 이다`() {
+        doThrow(IllegalArgumentException("검토 상태는")).`when`(contentStudio).review("p1", "블로그", "MAYBE")
+        assertEquals(HttpStatus.BAD_REQUEST, status { controller.reviewContentOutput("p1", "블로그", ReviewRequest("MAYBE")) })
+    }
+
+    @Test
     fun `주제 후보가 없으면 204 다`() {
         org.mockito.Mockito.`when`(topicDrafts.nextCandidate()).thenReturn(null)
         assertEquals(HttpStatus.NO_CONTENT, controller.nextTopicCandidate().statusCode)
