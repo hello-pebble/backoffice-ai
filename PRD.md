@@ -116,7 +116,7 @@ v1.0의 CSV 저장, SQLite, Windows 작업 스케줄러, Telegram 알림은 없�
 | 에이전트 역할·요청 템플릿 | AGENT_ROLES, PARALLEL_WORKFLOW | `docs/AGENT_ROLES.md`로 합침 |
 | 기능 목록 | README, backend/README, AGENTS | 이 PRD §2. README는 요약 5줄 |
 | 배포 대상 | DEVELOPMENT_RULES·BRANCH_STRATEGY = **Cloud Run(틀림)**, 나머지 = Railway | Railway로 통일 |
-| 백엔드 구성 | backend/README "패키지 없이 파일 단위", "Flyway V1~V7" — `d31bd9e`·V8·V9 이후 틀림 | §3으로 갱신 |
+| 백엔드 구성 | backend/README "패키지 없이 파일 단위", "Flyway V1~V7" — `d31bd9e`·V8·V9 이후 틀림 | §3으로 갱신 **(2026-09-12 완료)** |
 | `architecture-docs-refresh.patch` (루트, 미추적) | `develop` 시절 상태를 담고 있고 `git apply --check` 실패 | 삭제 후보. 내용 중 살릴 것은 이미 커밋됨 |
 
 ---
