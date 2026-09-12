@@ -28,14 +28,14 @@ class TopicDraftService(
     /**
      * 소식·키워드 중 우선순위가 가장 높은 주제 1건. 대본 생성 화면이 원본을 채울 때 쓴다.
      * 키워드는 여기서 소진하지 않는다. 가져오기만 하고 생성하지 않은 키워드가 사라지면 안 된다.
-     * 데모는 실제 automation_keyword 를 읽지 않는다(뉴스 후보만 쓴다).
+     * 데모도 키워드를 읽는다(읽기만). 소진은 ContentStudioService 가 데모의 keywordId 를 버려서 막는다.
      */
     fun nextCandidate(): DraftSource? {
         val now = OffsetDateTime.now()
         val news = aiNewsService.refresh()
         val newsCandidate = selectCandidate(news, load().map { it.sourceId }.toSet(), now)?.let { DraftSource.fromNews(it, now) }
         // 우선순위·검색량이 높은 키워드 하나만 후보로 본다. 이미 automationRepository 가 그 순서로 정렬해 준다.
-        val keyword = if (DemoContext.isDemo()) null else automationRepository.unusedKeywords(1).firstOrNull()
+        val keyword = automationRepository.unusedKeywords(1).firstOrNull()
         return listOfNotNull(newsCandidate, keyword?.let { DraftSource.fromKeyword(it) }).maxByOrNull { it.priorityScore }
     }
 
