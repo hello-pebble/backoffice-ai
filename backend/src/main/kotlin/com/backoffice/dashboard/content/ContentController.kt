@@ -39,6 +39,21 @@ class ContentController(
         throw ResponseStatusException(HttpStatus.BAD_REQUEST, error.message)
     }
 
+    /** 승인·반려. 데모 허용 목록에 없어 데모 세션은 403. */
+    @PatchMapping("/content-packages/{id}/outputs/{channel}")
+    fun reviewContentOutput(@PathVariable id: String, @PathVariable channel: String, @RequestBody request: ReviewRequest): ContentPackage = try {
+        contentStudioService.review(id, channel, request.reviewStatus)
+    } catch (error: IllegalArgumentException) {
+        throw ResponseStatusException(HttpStatus.BAD_REQUEST, error.message)
+    }
+
+    @PostMapping("/content-packages/{id}/notify")
+    fun notifyContentPackage(@PathVariable id: String): ContentPackage = try {
+        contentStudioService.notify(id)
+    } catch (error: IllegalArgumentException) {
+        throw ResponseStatusException(HttpStatus.BAD_REQUEST, error.message)
+    }
+
     /**
      * 아침 점검 전에 워커 크론이 한 번 부른다. 소식 수집 → 핵심 3건 요약 → 주제 초안 순서.
      * 한 단계가 실패해도 다음 단계는 돈다. 실패 알림은 각 서비스의 운영 센터 기록이 이미 Slack 으로 보낸다.
@@ -137,3 +152,5 @@ class ContentController(
         throw ResponseStatusException(HttpStatus.BAD_REQUEST, error.message)
     }
 }
+
+data class ReviewRequest(val reviewStatus: String = "")

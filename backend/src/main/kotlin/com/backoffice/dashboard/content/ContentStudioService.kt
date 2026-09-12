@@ -1,6 +1,7 @@
 package com.backoffice.dashboard.content
 
 import com.backoffice.dashboard.*
+import com.backoffice.dashboard.automation.SlackService
 import com.backoffice.dashboard.operations.*
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -30,6 +31,8 @@ class ContentStudioService(
     private val topicDraftService: TopicDraftService,
     private val automationRepository: AutomationRepository,
     private val llm: LlmClient,
+    private val slack: SlackService,
+    private val properties: OfficeProperties,
     private val pool: ExecutorService = Executors.newSingleThreadExecutor { runnable ->
         Thread(runnable, "content-studio").apply { isDaemon = true }
     },
@@ -92,9 +95,48 @@ class ContentStudioService(
             }
             // 키워드는 대본이 하나라도 나왔을 때만 소진한다. 실패하면 다음에 같은 키워드를 다시 쓸 수 있다.
             if (succeeded && req.keywordId != null) automationRepository.markKeywordUsed(req.keywordId)
+            // Slack 은 패키지당 한 번. 채널마다 보내면 4채널에 4건이 온다. 전부 실패면 검토할 게 없으니 보내지 않는다.
+            if (succeeded) synchronized(this) { update(packageId) { sendSlack(it) } }
         } finally {
             DemoContext.clear()
         }
+    }
+
+    /**
+     * 승인·반려. 실제로 무언가 바뀌는 채널은 블로그뿐이다(발행 큐 상태). 나머지는 사람이 복사해 쓰는 결과물이라 표시만 바뀐다.
+     * 데모 라우트에는 열지 않는다(SessionAuthFilter 허용 목록에 없음).
+     */
+    fun review(packageId: String, channel: String, reviewStatus: String): ContentPackage = synchronized(this) {
+        require(reviewStatus in REVIEW_STATUSES) { "검토 상태는 ${REVIEW_STATUSES.joinToString("·")} 중 하나여야 합니다." }
+        val item = list().firstOrNull { it.id == packageId } ?: throw IllegalArgumentException("패키지를 찾을 수 없습니다.")
+        val output = item.outputs.firstOrNull { it.channel == channel } ?: throw IllegalArgumentException("패키지에 $channel 채널이 없습니다.")
+        require(output.status == "성공") { "성공한 채널만 검토할 수 있습니다." }
+        if (channel == "블로그" && output.refId != null) {
+            automationRepository.updateContentStatus(output.refId, if (reviewStatus == "APPROVED") "approved" else if (reviewStatus == "REJECTED") "rejected" else "pending")
+        }
+        update(packageId) { pkg -> pkg.copy(outputs = pkg.outputs.map { if (it.channel == channel) it.copy(reviewStatus = reviewStatus) else it }) }
+    }
+
+    /** Slack 재전송. 이미 보낸 패키지는 거부한다. */
+    fun notify(packageId: String): ContentPackage = synchronized(this) {
+        val item = list().firstOrNull { it.id == packageId } ?: throw IllegalArgumentException("패키지를 찾을 수 없습니다.")
+        require(item.slackStatus != "SENT") { "이미 Slack 알림을 보낸 패키지입니다." }
+        update(packageId) { sendSlack(it) }
+    }
+
+    // 대본 전문은 보내지 않는다. 제목·채널·검토 링크만.
+    private fun sendSlack(item: ContentPackage): ContentPackage {
+        val done = item.outputs.filter { it.status == "성공" }
+        val link = "${properties.slack.reviewBaseUrl.trim().trimEnd('/')}/#content-package-${item.id}"
+        val (status, error) = slack.notify("검토할 콘텐츠 ${done.size}건: ${item.title}\n채널: ${done.joinToString(" · ") { it.channel }}\n검토 링크: $link")
+        return item.copy(slackStatus = status, slackError = error)
+    }
+
+    /** 목록에서 패키지 하나만 바꿔 저장한다. 호출자가 synchronized(this) 를 잡는다. */
+    private fun update(packageId: String, change: (ContentPackage) -> ContentPackage): ContentPackage {
+        var changed: ContentPackage? = null
+        save(list().map { if (it.id == packageId) change(it).also { c -> changed = c } else it })
+        return changed ?: throw IllegalArgumentException("패키지를 찾을 수 없습니다.")
     }
 
     private fun run(channel: String, title: String, req: CreateContentPackageRequest): ContentOutput = when (channel) {
@@ -102,7 +144,7 @@ class ContentStudioService(
             val panels = toon.panels.joinToString("\n") { "${it.number}컷 · ${it.scene}\n  ${it.dialogue}" }
             ContentOutput(channel, toon.title, "${toon.caption}\n\n$panels", refId = toon.id)
         }
-        "유튜브 쇼츠" -> topicDraftService.draftFromText(title, req.source, req.sourceId).let {
+        "유튜브 쇼츠" -> topicDraftService.draftFromText(title, req.source, req.sourceId, notify = false).let {
             ContentOutput(channel, it.title, "[훅] ${it.hook}\n\n${it.script}\n\n${it.hashtags.joinToString(" ") { tag -> "#$tag" }}", refId = it.id)
         }
         "카드뉴스" -> generate(channel, "당신은 핵심만 남기는 한국어 카드뉴스 편집자입니다.", """다음 원본을 6장짜리 카드뉴스로 구성하세요. 원본에 없는 사실은 만들지 마세요.
@@ -160,6 +202,7 @@ class ContentStudioService(
 
     companion object {
         const val PENDING = "생성중"
+        val REVIEW_STATUSES = setOf("REVIEW_PENDING", "APPROVED", "REJECTED")
     }
 }
 
@@ -168,6 +211,16 @@ data class CreateContentPackageRequest(
     val source: String = "", val tone: String = "공감형", val target: String = "", val channels: List<String> = emptyList(),
     val panelCount: Int = 4, val sourceId: String? = null, val keywordId: Long? = null,
 )
-data class ContentPackage(val id: String, val title: String, val source: String, val tone: String, val target: String, val createdAt: String, val outputs: List<ContentOutput>)
-/** status: 생성중 → 성공 | 실패. refId: 인스타툰 id·초안 id·블로그 큐 id. 화면이 "어느 섹션에서 이어서 하는지" 안내할 때 쓴다. */
-data class ContentOutput(val channel: String, val title: String, val body: String, val status: String = "성공", val error: String? = null, val refId: String? = null)
+/** slackStatus: 패키지당 한 번 보내는 검토 알림의 결과. 이전 문서엔 없어 null 로 읽힌다. */
+data class ContentPackage(
+    val id: String, val title: String, val source: String, val tone: String, val target: String, val createdAt: String, val outputs: List<ContentOutput>,
+    val slackStatus: String? = null, val slackError: String? = null,
+)
+/**
+ * status: 생성중 → 성공 | 실패. reviewStatus: REVIEW_PENDING → APPROVED | REJECTED (성공한 출력만 의미 있음).
+ * refId: 인스타툰 id·초안 id·블로그 큐 id. 화면이 컷 이미지·발행 큐를 이어서 다룰 때 쓴다.
+ */
+data class ContentOutput(
+    val channel: String, val title: String, val body: String, val status: String = "성공", val error: String? = null, val refId: String? = null,
+    val reviewStatus: String = "REVIEW_PENDING",
+)

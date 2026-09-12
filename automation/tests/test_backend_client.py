@@ -34,6 +34,7 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(payload)
 
     do_GET = _respond
+    do_PATCH = _respond
     do_POST = _respond
 
     def log_message(self, *args):  # 테스트 출력을 더럽히지 않는다
@@ -75,6 +76,17 @@ def test_사용_전_키워드는_limit_을_붙여_조회한다(client):
 
     assert client.get_unused_keywords(5) == [{"id": 1, "keyword": "키워드"}]
     assert received[0]["path"] == "/api/worker/keywords/unused?limit=5"
+
+
+def test_승인된_글_조회와_상태_갱신은_상태만_보낸다(client):
+    Handler.body = []
+    assert client.get_contents(status="approved", limit=5) == []
+    client.update_content_status("uuid", "posted", "2026-09-12T07:00:00+09:00")
+
+    assert received[0]["path"] == "/api/worker/contents?status=approved&limit=5"
+    assert received[1]["method"] == "PATCH" and received[1]["path"] == "/api/worker/contents/uuid"
+    # 본문을 보내지 않는다. save_content 로 보내면 upsert 가 본문을 빈 값으로 덮는다.
+    assert received[1]["body"] == {"status": "posted", "postedDate": "2026-09-12T07:00:00+09:00"}
 
 
 def test_콘텐츠와_발행기록은_각자_경로로_간다(client):

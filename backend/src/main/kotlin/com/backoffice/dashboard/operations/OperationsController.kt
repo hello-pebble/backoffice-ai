@@ -89,6 +89,20 @@ class OperationsController(
         throw ResponseStatusException(HttpStatus.BAD_REQUEST, error.message)
     }
 
+    @GetMapping("/worker/contents")
+    fun workerContents(status: String?, limit: Int?): List<AutomationContent> =
+        automationRepository.contentsByStatus(status ?: "approved", (limit ?: 10).coerceIn(1, 100))
+
+    /** 발행 완료 표시. 본문을 다시 보내지 않아도 되도록 상태만 받는다. */
+    @PatchMapping("/worker/contents/{id}")
+    fun updateWorkerContent(@PathVariable id: String, @RequestBody request: UpdateContentStatusRequest): Map<String, Boolean> = try {
+        require(request.status.isNotBlank()) { "status 가 비어 있습니다." }
+        automationRepository.updateContentStatus(id, request.status, request.postedDate)
+        mapOf("ok" to true)
+    } catch (error: IllegalArgumentException) {
+        throw ResponseStatusException(HttpStatus.BAD_REQUEST, error.message)
+    }
+
     @PostMapping("/worker/posting-records")
     fun saveWorkerPostingRecord(@RequestBody request: SavePostingRecordRequest): Map<String, Boolean> = try {
         automationRepository.savePostingRecord(request)

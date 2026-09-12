@@ -97,6 +97,7 @@ body.demo aside,body.demo main{margin-top:33px}
 .demo-note{display:none;font-size:13px;color:var(--signal);margin:8px 0 0;max-width:72ch}
 body.demo .demo-note{display:block}
 body.demo #slack-connect,body.demo #slack-status,body.demo #automation-content-run{display:none}
+body.demo .owner-only{display:none}
 
 /* 필터와 모델별 표 */
 .ai-filters{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}

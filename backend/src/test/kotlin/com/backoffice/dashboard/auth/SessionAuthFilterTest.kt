@@ -93,6 +93,9 @@ class SessionAuthFilterTest {
             request("/api/tasks", method = "POST", session = demoToken),
             request("/api/slack/channels", session = demoToken),
             request("/api/topic-drafts/abc/notify", method = "POST", session = demoToken),
+            // 데모 방문자는 승인·반려·Slack 재전송을 못 한다.
+            request("/api/content-packages/p1/outputs/블로그", method = "PATCH", session = demoToken),
+            request("/api/content-packages/p1/notify", method = "POST", session = demoToken),
             // 읽음 표시와 모양이 비슷하지만 허용 목록에 없다.
             request("/api/ai-news/abc/delete", method = "PATCH", session = demoToken),
             // 접두 규칙이 메서드까지 본다. 이미지 조회는 GET 만 연다.

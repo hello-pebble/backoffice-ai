@@ -92,7 +92,7 @@ class TopicDraftService(
      * sourceId 는 원본이 소식·키워드에서 왔을 때 그 id 다. 남겨 둬야 nextCandidate 가 같은 주제를 다시 고르지 않는다.
      */
     @Synchronized
-    fun draftFromText(title: String, source: String, sourceId: String? = null): TopicDraft {
+    fun draftFromText(title: String, source: String, sourceId: String? = null, notify: Boolean = true): TopicDraft {
         val startedAt = System.nanoTime()
         val target = llm.target()
         val candidate = DraftSource.fromText(title, source, sourceId)
@@ -107,7 +107,7 @@ class TopicDraftService(
             )
             throw IllegalStateException("대본 초안 생성에 실패했습니다 (${target.endpoint}): $reason", error)
         }
-        val draft = persist(candidate, script, target.model, OffsetDateTime.now())
+        val draft = persist(candidate, script, target.model, OffsetDateTime.now(), notify)
         aiOperationsService.record(
             agent = "주제 대본 초안 에이전트", provider = target.vendor, model = target.model,
             tools = listOf(candidate.toolLabel, llm.toolLabel(target), "Slack 알림 · ${draft.slackStatus}"),
@@ -130,8 +130,11 @@ class TopicDraftService(
         return updated
     }
 
-    /** 초안 저장은 Slack 결과와 무관하게 성공한다. 알림 상태만 함께 기록해 둔다. */
-    internal fun persist(candidate: DraftSource, script: TopicScript, model: String, now: OffsetDateTime): TopicDraft {
+    /**
+     * 초안 저장은 Slack 결과와 무관하게 성공한다. 알림 상태만 함께 기록해 둔다.
+     * notify=false 는 대본 생성(패키지)이 부를 때다. 패키지가 채널을 묶어 한 번만 알리므로 초안이 따로 보내면 두 번 온다.
+     */
+    internal fun persist(candidate: DraftSource, script: TopicScript, model: String, now: OffsetDateTime, notify: Boolean = true): TopicDraft {
         val id = UUID.randomUUID().toString()
         val draft = TopicDraft(
             id = id,
@@ -152,7 +155,7 @@ class TopicDraftService(
             model = model,
             createdAt = now.toString(),
         )
-        val (status, error) = sendSlack(draft)
+        val (status, error) = if (notify) sendSlack(draft) else "SKIPPED" to null
         val saved = draft.copy(slackStatus = status, slackError = error)
         save((listOf(saved) + load()).take(50))
         return saved

@@ -1,6 +1,7 @@
 package com.backoffice.dashboard.content
 
 import com.backoffice.dashboard.*
+import com.backoffice.dashboard.automation.SlackService
 import com.backoffice.dashboard.operations.*
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.junit.jupiter.api.Test
@@ -31,12 +32,13 @@ class ContentStudioServiceTest {
     private val drafts = mock(TopicDraftService::class.java)
     private val automation = mock(AutomationRepository::class.java)
     private val llm = mock(LlmClient::class.java)
+    private val slack = mock(SlackService::class.java)
     private val service = build(inlineExecutor(runInline = true))
     private val source = "아침에 커피를 마시며 오늘 할 일을 정리하는 습관에 대한 이야기입니다."
     private val target = LlmTarget(useOllama = false, endpoint = "https://api.example.com/v1/chat/completions", model = "gpt-test", vendor = "api.example.com")
 
     private fun build(pool: ExecutorService) =
-        ContentStudioService(ObjectMapper(), mock(AiOperationsService::class.java), documents, toons, drafts, automation, llm, pool)
+        ContentStudioService(ObjectMapper(), mock(AiOperationsService::class.java), documents, toons, drafts, automation, llm, slack, OfficeProperties(), pool)
 
     private fun toon() = InstagramToon("toon-1", source, "공감형", 4, "툰 제목", "캡션", listOf("#툰"),
         listOf(InstagramToonPanel(1, "장면", "대사", "독백", "prompt")), "2026-09-06T09:00:00+09:00", "gpt-test")
@@ -64,7 +66,7 @@ class ContentStudioServiceTest {
     @Test
     fun `체크된 채널만 각자의 에이전트로 만들고 저장한다`() {
         `when`(toons.generate(anyArg())).thenReturn(toon())
-        `when`(drafts.draftFromText(anyString(), anyString(), anyArg())).thenReturn(draft())
+        `when`(drafts.draftFromText(anyString(), anyString(), anyArg(), anyBoolean())).thenReturn(draft())
 
         val result = service.create(CreateContentPackageRequest(source = source, channels = listOf("인스타툰", "유튜브 쇼츠", "틱톡")))
 
@@ -94,12 +96,13 @@ class ContentStudioServiceTest {
     fun `컷 수와 원본 id 를 채널 에이전트에 넘기고 성공하면 키워드를 소진한다`() {
         var toonRequest: CreateInstagramToonRequest? = null
         doAnswer { toonRequest = it.getArgument(0); toon() }.`when`(toons).generate(anyArg())
-        `when`(drafts.draftFromText(anyString(), anyString(), anyArg())).thenReturn(draft())
+        `when`(drafts.draftFromText(anyString(), anyString(), anyArg(), anyBoolean())).thenReturn(draft())
 
         service.create(CreateContentPackageRequest(source = source, channels = listOf("인스타툰", "유튜브 쇼츠"), panelCount = 8, sourceId = "news-1", keywordId = 7))
 
         assertEquals(8, toonRequest?.panelCount)
-        verify(drafts).draftFromText(anyString(), anyString(), org.mockito.ArgumentMatchers.eq("news-1"))
+        // 쇼츠 초안은 따로 Slack 을 보내지 않는다(notify=false). 패키지가 한 번 보낸다.
+        verify(drafts).draftFromText(anyString(), anyString(), org.mockito.ArgumentMatchers.eq("news-1"), org.mockito.ArgumentMatchers.eq(false))
         verify(automation).markKeywordUsed(7)
     }
 
@@ -117,6 +120,40 @@ class ContentStudioServiceTest {
             DemoContext.clear()
         }
         verify(automation, never()).markKeywordUsed(7)
+    }
+
+    @Test
+    fun `Slack 은 패키지당 한 번, 전부 실패면 보내지 않는다`() {
+        `when`(slack.notify(anyString())).thenReturn("SENT" to null)
+        `when`(toons.generate(anyArg())).thenReturn(toon())
+        llmAnswers("""{"title":"카드 제목","cards":[{"number":1,"headline":"헤드","body":"본문"}]}""")
+
+        service.create(CreateContentPackageRequest(source = source, channels = listOf("인스타툰", "카드뉴스")))
+
+        verify(slack, org.mockito.Mockito.times(1)).notify(org.mockito.ArgumentMatchers.contains("#content-package-"))
+        assertEquals("SENT", saved().slackStatus)
+        assertTrue(saved().outputs.all { it.reviewStatus == "REVIEW_PENDING" })
+
+        `when`(toons.generate(anyArg())).thenThrow(IllegalStateException("모델 401"))
+        service.create(CreateContentPackageRequest(source = source, channels = listOf("인스타툰")))
+        verify(slack, org.mockito.Mockito.times(1)).notify(anyString())
+    }
+
+    @Test
+    fun `승인은 블로그만 발행 큐 상태를 바꾸고 나머지는 표시만 바꾼다`() {
+        llmAnswers("""{"title":"블로그 제목","content":"본문 전문","tags":[]}""")
+        `when`(toons.generate(anyArg())).thenReturn(toon())
+        service.create(CreateContentPackageRequest(source = source, channels = listOf("블로그", "인스타툰")))
+        val id = saved().id
+        val blogRef = saved().outputs.first { it.channel == "블로그" }.refId!!
+
+        service.review(id, "인스타툰", "APPROVED")
+        verify(automation, never()).updateContentStatus(anyString(), anyString(), anyArg())
+
+        val reviewed = service.review(id, "블로그", "APPROVED")
+        verify(automation).updateContentStatus(blogRef, "approved", null)
+        assertEquals(listOf("APPROVED", "APPROVED"), reviewed.outputs.map { it.reviewStatus })
+        assertFailsWith<IllegalArgumentException> { service.review(id, "블로그", "MAYBE") }
     }
 
     @Test

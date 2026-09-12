@@ -81,6 +81,8 @@ class TopicDraftServiceTest {
         assertEquals(draft.id, service.list().single().id)
         // 소식에서 가져온 원본은 그 소식 id 를 남겨 nextCandidate 가 같은 주제를 다시 고르지 않는다.
         assertEquals("news-1", DraftSource.fromText("제목", "원본", "news-1").sourceId)
+        // 패키지 경유면 Slack 을 보내지 않는다. 패키지가 한 번 보낸다.
+        assertEquals("SKIPPED", service.persist(DraftSource.fromText("제목", "원본"), script, "gpt-test", now, notify = false).slackStatus)
     }
 
     @Test
