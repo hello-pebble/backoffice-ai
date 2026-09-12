@@ -39,13 +39,26 @@
             </div>
         </aside>
 
+        <aside id="trace" class="trace" hidden>
+            <div class="trace-head"><b>동작 보기</b><button class="light" id="trace-close">닫기</button></div>
+            <ol class="trace-flow">
+                <li>원본 입력 → <code>POST /api/content-packages</code> → 202, 모든 채널이 <b>생성중</b>으로 저장</li>
+                <li>백그라운드 스레드가 채널을 하나씩 실행: 모델 호출 → 결과 저장 → 운영 센터에 토큰·비용 기록</li>
+                <li>화면은 3초마다 목록을 다시 읽어 채널 상태를 갱신(폴링)</li>
+                <li>전부 끝나면 Slack 알림 1건. 출력은 <b>검토 대기</b> → 승인·반려. 블로그 승인만 발행 큐(<code>approved</code>)로</li>
+                <li>인스타툰 컷 이미지: 버튼 → 202 → 백그라운드 Imagen → 폴링으로 컷별 표시</li>
+            </ol>
+            <p class="trace-hint">아래는 이 화면이 실제로 보낸 요청과 서버 쪽에서 바뀐 상태입니다. 최신이 위.</p>
+            <ol id="trace-log" class="trace-log"><li class="muted">아직 기록이 없습니다. 패키지를 만들어 보세요.</li></ol>
+        </aside>
+
         <main>
             <header>
                 <div>
                     <h1>오늘의 브리핑</h1>
                     <p class="today" id="today"></p>
                 </div>
-                <button id="refresh">새로고침</button>
+                <div class="header-actions"><button class="light" id="trace-toggle">동작 보기</button><button id="refresh">새로고침</button></div>
             </header>
 
             <section id="ai-operations" class="card">
