@@ -177,7 +177,7 @@ input:focus,textarea:focus,select:focus{outline:2px solid var(--signal);outline-
 textarea{min-height:110px;resize:vertical;line-height:1.55}
 .studio-form fieldset{border:0;padding:0;margin:16px 0 0}
 .studio-form legend{font-size:13px;font-weight:500;margin-bottom:8px;padding:0}
-.studio-form fieldset label{display:inline-flex;align-items:center;gap:6px;margin:0 16px 8px 0;font-size:13px;font-weight:400}
+.studio-form fieldset label{display:inline-flex;align-items:center;gap:6px;margin:0 16px 8px 0;font-size:13px;font-weight:400;white-space:nowrap}
 .studio-form fieldset input{width:auto;margin:0;accent-color:var(--signal)}
 .content-package-list{margin-top:20px}
 .content-package{border-top:1px solid var(--rule);padding:16px 0}
@@ -186,7 +186,12 @@ textarea{min-height:110px;resize:vertical;line-height:1.55}
 .content-output-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
 .content-output-grid details{background:var(--paper);border-radius:4px;padding:10px 12px}
 .content-output-grid summary{font-size:13px;font-weight:500;cursor:pointer}
-.content-output-grid pre{white-space:pre-wrap;font:12px/1.6 var(--font);color:var(--muted);margin:8px 0 0}
+/* 대본 검토는 읽는 일이다. 카드를 전체 폭·자동 높이로 펴고, 펼친 출력은 두 칸을 차지한다. */
+#content-studio{grid-column:1/-1;height:auto;overflow:visible}
+.content-output-grid details[open]{grid-column:1/-1}
+.content-output-grid summary .tag{margin-left:6px}
+.review-bar{margin:10px 0 0;display:flex;gap:8px}
+.content-output-grid pre{white-space:pre-wrap;font:13px/1.75 var(--font);color:var(--ink);margin:12px 0 0;max-width:72ch}
 .toon-cut{width:100%;border-radius:4px;display:block;margin:8px 0 0}
 
 /* 페이지 이동 */
