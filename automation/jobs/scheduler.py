@@ -12,6 +12,7 @@ from config.settings import (
     MORNING_PREP_TIME
 )
 from automation.shared.logger import logger
+from automation.shared.clock import KST
 from automation.jobs.keyword_collector import KeywordCollector
 from automation.jobs.content_generator import ContentGenerator
 from automation.jobs.blog_poster import BlogPoster
@@ -23,7 +24,8 @@ class Scheduler:
     
     def __init__(self):
         """스케줄러 초기화"""
-        self.scheduler = BlockingScheduler()
+        # 컨테이너 TZ 가 UTC 여도 *_TIME 은 한국시간으로 읽는다. 백엔드가 JVM 타임존을 고정하는 것과 같은 원칙이다.
+        self.scheduler = BlockingScheduler(timezone=KST)
         self.keyword_collector = KeywordCollector()
         self.content_generator = ContentGenerator()
         self.blog_poster = BlogPoster()
