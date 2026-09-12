@@ -110,6 +110,14 @@ class ContentController(
     @GetMapping("/topic-drafts")
     fun topicDrafts() = topicDraftService.list()
 
+    /** 대본 생성 화면의 "소식·키워드에서 주제 가져오기". 없으면 204. 키워드는 소진하지 않는다. */
+    @GetMapping("/topic-candidates/next")
+    fun nextTopicCandidate(): ResponseEntity<TopicCandidate> = try {
+        topicDraftService.nextCandidate()?.let { ResponseEntity.ok(TopicCandidate.of(it)) } ?: ResponseEntity.noContent().build()
+    } catch (error: IllegalStateException) {
+        throw ResponseStatusException(HttpStatus.BAD_GATEWAY, error.message)
+    }
+
     @PostMapping("/topic-drafts/refresh")
     fun refreshTopicDrafts(): TopicDraft = try {
         topicDraftService.refresh()

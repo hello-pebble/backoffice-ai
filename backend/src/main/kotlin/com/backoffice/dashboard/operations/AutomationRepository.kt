@@ -33,6 +33,11 @@ class AutomationRepository(private val jdbc: JdbcTemplate, private val objectMap
         )!!
     }
 
+    /** 소진만 표시한다. saveKeyword(id) 는 priority 까지 덮어써서 값을 모르는 호출자가 쓰면 0 이 된다. */
+    fun markKeywordUsed(id: Long) {
+        jdbc.update("update automation_keyword set used = true where id = ? and lifecycle_state = 'active'", id)
+    }
+
     fun unusedKeywords(limit: Int): List<AutomationKeyword> = jdbc.query(
         """
         select id, keyword, search_volume, category, collected_at, used, priority

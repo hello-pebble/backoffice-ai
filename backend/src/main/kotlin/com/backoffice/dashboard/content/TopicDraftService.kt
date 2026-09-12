@@ -30,18 +30,26 @@ class TopicDraftService(
 
     fun list(): List<TopicDraft> = load().sortedByDescending { it.createdAt }
 
+    /**
+     * 소식·키워드 중 우선순위가 가장 높은 주제 1건. 대본 생성 화면이 원본을 채울 때 쓴다.
+     * 키워드는 여기서 소진하지 않는다. 가져오기만 하고 생성하지 않은 키워드가 사라지면 안 된다.
+     * 데모는 실제 automation_keyword 를 읽지 않는다(뉴스 후보만 쓴다).
+     */
+    fun nextCandidate(): DraftSource? {
+        val now = OffsetDateTime.now()
+        val news = aiNewsService.refresh()
+        val newsCandidate = selectCandidate(news, load().map { it.sourceId }.toSet(), now)?.let { DraftSource.fromNews(it, now) }
+        // 우선순위·검색량이 높은 키워드 하나만 후보로 본다. 이미 automationRepository 가 그 순서로 정렬해 준다.
+        val keyword = if (DemoContext.isDemo()) null else automationRepository.unusedKeywords(1).firstOrNull()
+        return listOfNotNull(newsCandidate, keyword?.let { DraftSource.fromKeyword(it) }).maxByOrNull { it.priorityScore }
+    }
+
     @Synchronized
     fun refresh(): TopicDraft {
         val startedAt = System.nanoTime()
         val target = llm.target()
         val now = OffsetDateTime.now()
-        val news = aiNewsService.refresh()
-        val newsCandidate = selectCandidate(news, load().map { it.sourceId }.toSet(), now)?.let { DraftSource.fromNews(it, now) }
-        // 우선순위·검색량이 높은 키워드 하나만 후보로 본다. 이미 automationRepository 가 그 순서로 정렬해 준다.
-        // 데모는 실제 automation_keyword 를 읽지도, used=true 로 바꾸지도 않는다(뉴스 후보만 쓴다).
-        val keyword = if (DemoContext.isDemo()) null else automationRepository.unusedKeywords(1).firstOrNull()
-        val keywordCandidate = keyword?.let { DraftSource.fromKeyword(it) }
-        val candidate = listOfNotNull(newsCandidate, keywordCandidate).maxByOrNull { it.priorityScore }
+        val candidate = nextCandidate()
             ?: throw IllegalArgumentException("초안으로 만들 새 주제가 없습니다. 소식원이나 키워드가 갱신된 뒤 다시 시도하세요.")
         val (usage, script) = try {
             generate(candidate)
@@ -79,12 +87,15 @@ class TopicDraftService(
         return draft
     }
 
-    /** 콘텐츠 스튜디오가 원본 텍스트로 쇼츠 대본을 만들 때 쓴다. 저장·Slack·기록은 refresh 와 같다. */
+    /**
+     * 콘텐츠 스튜디오가 원본 텍스트로 쇼츠 대본을 만들 때 쓴다. 저장·Slack·기록은 refresh 와 같다.
+     * sourceId 는 원본이 소식·키워드에서 왔을 때 그 id 다. 남겨 둬야 nextCandidate 가 같은 주제를 다시 고르지 않는다.
+     */
     @Synchronized
-    fun draftFromText(title: String, source: String): TopicDraft {
+    fun draftFromText(title: String, source: String, sourceId: String? = null): TopicDraft {
         val startedAt = System.nanoTime()
         val target = llm.target()
-        val candidate = DraftSource.fromText(title, source)
+        val candidate = DraftSource.fromText(title, source, sourceId)
         val (usage, script) = try {
             generate(candidate)
         } catch (error: Exception) {
@@ -240,8 +251,8 @@ data class DraftSource(
             toolLabel = "AI 뉴스 수집",
         )
 
-        fun fromText(title: String, source: String): DraftSource = DraftSource(
-            sourceId = "studio-${UUID.randomUUID()}",
+        fun fromText(title: String, source: String, sourceId: String? = null): DraftSource = DraftSource(
+            sourceId = sourceId ?: "studio-${UUID.randomUUID()}",
             source = "콘텐츠 스튜디오",
             sourceTitle = title,
             sourceUrl = "",
@@ -264,6 +275,13 @@ data class DraftSource(
             toolLabel = "키워드 수집",
             keyword = item,
         )
+    }
+}
+
+/** 대본 생성 화면의 "주제 가져오기" 응답. context 는 원본 textarea 에 그대로 들어간다. */
+data class TopicCandidate(val sourceId: String, val source: String, val title: String, val context: String, val keywordId: Long?) {
+    companion object {
+        fun of(candidate: DraftSource) = TopicCandidate(candidate.sourceId, candidate.source, candidate.sourceTitle, candidate.context, candidate.keyword?.id)
     }
 }
 

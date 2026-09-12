@@ -91,6 +91,12 @@ class ContentControllerTest {
     }
 
     @Test
+    fun `주제 후보가 없으면 204 다`() {
+        org.mockito.Mockito.`when`(topicDrafts.nextCandidate()).thenReturn(null)
+        assertEquals(HttpStatus.NO_CONTENT, controller.nextTopicCandidate().statusCode)
+    }
+
+    @Test
     fun `아침 사전 준비는 한 단계가 실패해도 다음 단계를 돌리고 단계별 결과를 돌려준다`() {
         doThrow(IllegalStateException("RSS 연결 실패")).`when`(news).refresh()
         doThrow(IllegalArgumentException("새 주제가 없습니다.")).`when`(topicDrafts).refresh()

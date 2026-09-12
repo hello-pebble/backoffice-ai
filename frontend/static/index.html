@@ -26,9 +26,7 @@
             <div class="wordmark">STUDIO<span>withAI</span></div>
             <nav>
                 <a class="active" href="#ai-operations">AI 운영 센터</a>
-                <a href="#topic-drafts">주제 대본 초안</a>
-                <a href="#content-studio">콘텐츠 생성 에이전트</a>
-                <a href="#instagram-toons">인스타툰 대본</a>
+                <a href="#content-studio">대본 생성</a>
                 <a href="#mail">메일</a>
                 <a href="#ai-news">최신 소식</a>
                 <a href="#market">국내 관심 종목</a>
@@ -75,33 +73,26 @@
                 <div id="ai-operation-list" class="empty">아직 AI 실행 이력이 없습니다.</div>
             </section>
 
-            <section id="topic-drafts" class="card">
-                <div class="heading">
-                    <h2>주제 대본 초안</h2>
-                    <button class="light" id="topic-draft-refresh">주제 수집 및 초안 생성</button>
-                </div>
-                <p class="muted">공식 RSS 소식과 수집된 키워드 중 우선순위가 가장 높은 주제로 45~60초 숏폼 검토 대본을 1건 만듭니다. 대본은 검토 대기 상태로 저장되고 Slack에는 검토 링크만 보냅니다.</p>
-                <div id="topic-draft-list" class="empty">아직 생성된 대본 초안이 없습니다.</div>
-            </section>
-
             <section id="content-studio" class="card">
                 <div class="heading">
-                    <h2>콘텐츠 생성 에이전트</h2>
+                    <h2>대본 생성</h2>
                     <button class="light" id="automation-content-run">워커 실행 테스트</button>
                 </div>
-                <p class="muted">원본 하나로 체크한 채널마다 해당 에이전트가 실행됩니다. 인스타툰·쇼츠 결과는 각 섹션에도 나타나고, 블로그는 발행 큐(검토 대기)에 들어갑니다.</p>
+                <p class="muted">원본 하나로 체크한 채널마다 해당 에이전트가 실행됩니다. 원본은 직접 쓰거나 소식·키워드에서 가져옵니다. 컷 이미지와 Slack 상태는 아래 카드에서 이어서 작업합니다. 블로그는 발행 큐(검토 대기)에 들어갑니다.</p>
                 <p class="demo-note">워커 실행은 서버에서 별도 프로세스를 띄우므로 데모에서는 막혀 있습니다. 패키지 생성은 그대로 동작합니다.</p>
                 <form id="content-package-form" class="studio-form">
                     <label>원본 콘텐츠
                         <textarea name="source" required placeholder="블로그 초안, 회의 메모, 아이디어 등 원본 콘텐츠를 입력하세요."></textarea>
                     </label>
+                    <button type="button" class="light" id="topic-candidate">소식·키워드에서 주제 가져오기</button>
+                    <input type="hidden" name="sourceId"><input type="hidden" name="keywordId">
                     <div class="studio-fields">
                         <label>톤<select name="tone"><option>공감형</option><option>정보형</option><option>전문가형</option></select></label>
                         <label>대상 고객<input name="target" placeholder="예: 30대 직장인"></label>
                     </div>
                     <fieldset>
                         <legend>만들 채널</legend>
-                        <label><input type="checkbox" name="channels" value="인스타툰" checked> 인스타툰</label>
+                        <label><input type="checkbox" name="channels" value="인스타툰" checked> 인스타툰 <select name="panelCount"><option value="4">4컷</option><option value="8">8컷</option></select></label>
                         <label><input type="checkbox" name="channels" value="유튜브 쇼츠" checked> 유튜브 쇼츠</label>
                         <label><input type="checkbox" name="channels" value="카드뉴스" checked> 카드뉴스</label>
                         <label><input type="checkbox" name="channels" value="블로그"> 블로그</label>
@@ -111,21 +102,19 @@
                 <div id="content-package-list" class="empty">아직 생성된 콘텐츠 패키지가 없습니다.</div>
             </section>
 
+            <section id="topic-drafts" class="card">
+                <div class="heading">
+                    <h2>이전 주제 대본 초안</h2>
+                </div>
+                <p class="muted">대본 생성에서 만든 쇼츠 대본이 검토 대기로 쌓입니다. 새 대본은 위 대본 생성에서 만듭니다.</p>
+                <div id="topic-draft-list" class="empty">아직 생성된 대본 초안이 없습니다.</div>
+            </section>
+
             <section id="instagram-toons" class="card">
                 <div class="heading">
-                    <h2>인스타툰 대본</h2>
+                    <h2>이전 인스타툰 대본</h2>
                 </div>
-                <p class="muted">에피소드 한 줄을 넣으면 컷별 장면, 대사, 나레이션과 그림 생성용 이미지 프롬프트를 함께 만듭니다.</p>
-                <form id="toon-form" class="studio-form">
-                    <label>에피소드
-                        <textarea name="episode" required minlength="10" placeholder="예: 출근길에 우산을 두고 온 날, 하필 퇴근 때 비가 쏟아졌다."></textarea>
-                    </label>
-                    <div class="studio-fields">
-                        <label>톤<select name="tone"><option>공감형</option><option>유머형</option><option>담담형</option></select></label>
-                        <label>컷 수<select name="panelCount"><option value="4">4컷</option><option value="8">8컷</option></select></label>
-                    </div>
-                    <button class="submit" id="toon-submit">대본과 이미지 프롬프트 생성</button>
-                </form>
+                <p class="muted">대본 생성에서 만든 인스타툰 대본과 컷 이미지입니다. 새 대본은 위 대본 생성에서 만듭니다.</p>
                 <div id="toon-list" class="empty">아직 생성된 인스타툰 대본이 없습니다.</div>
             </section>
 

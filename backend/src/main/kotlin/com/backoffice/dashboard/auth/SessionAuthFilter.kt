@@ -95,6 +95,7 @@ class SessionAuthFilter(
             "GET /api/ai-operations",
             "GET /api/topic-drafts",
             "POST /api/topic-drafts/refresh",
+            "GET /api/topic-candidates/next",
             "GET /api/slack/status",
             // 인스타툰은 모델을 한 번 부르고 문서 저장소에 남긴다. 파이썬 프로세스를 띄우지 않는다.
             "GET /api/instagram-toons",
