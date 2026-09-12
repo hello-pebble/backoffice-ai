@@ -94,6 +94,8 @@ def test_콘텐츠와_발행기록은_각자_경로로_간다(client):
     client.save_posting_history({"id": "uuid", "content_id": "uuid", "status": "success"})
 
     assert [call["path"] for call in received] == ["/api/worker/contents", "/api/worker/posting-records"]
+    # 워커의 snake_case 가 백엔드 요청 클래스의 camelCase 로 바뀌어야 값이 버려지지 않는다.
+    assert received[1]["body"] == {"id": "uuid", "contentId": "uuid", "status": "success"}
 
 
 def test_백엔드가_거부하면_사유를_담아_올린다(client):

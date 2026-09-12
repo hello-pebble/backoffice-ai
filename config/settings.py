@@ -60,6 +60,10 @@ MAX_CONTENT_LENGTH = int(os.getenv('MAX_CONTENT_LENGTH', '3000'))
 
 # 키워드 수집 설정
 MIN_SEARCH_VOLUME = int(os.getenv('MIN_SEARCH_VOLUME', '100'))
+# 구글 트렌드 일간 RSS. 지역 코드와, 키워드·관련 뉴스 제목에 하나라도 들어 있어야 통과하는 포함어(쉼표 구분, 비우면 전부 통과).
+GOOGLE_TRENDS_GEO = os.getenv('GOOGLE_TRENDS_GEO', 'KR')
+KEYWORD_INCLUDE = [w.strip().lower() for w in os.getenv('KEYWORD_INCLUDE', 'AI,인공지능,GPT,ChatGPT,챗GPT,Gemini,제미나이,Claude,클로드,OpenAI,오픈AI,딥마인드,엔비디아,LLM,로봇,자율주행,반도체').split(',') if w.strip()]
+KEYWORD_EXCLUDE = [w.strip().lower() for w in os.getenv('KEYWORD_EXCLUDE', '').split(',') if w.strip()]
 MAX_KEYWORDS_PER_DAY = int(os.getenv('MAX_KEYWORDS_PER_DAY', '10'))
 
 # Selenium 설정
