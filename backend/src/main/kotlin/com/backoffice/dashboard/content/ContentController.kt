@@ -55,14 +55,21 @@ class ContentController(
     }
 
     /**
-     * 아침 점검 전에 워커 크론이 한 번 부른다. 소식 수집 → 핵심 3건 요약 → 주제 초안 순서.
+     * 아침 점검 전에 워커 크론이 한 번 부른다. 소식 수집 → 핵심 3건 요약 → 우선순위 주제로 패키지 생성 순서.
      * 한 단계가 실패해도 다음 단계는 돈다. 실패 알림은 각 서비스의 운영 센터 기록이 이미 Slack 으로 보낸다.
+     * 아침 패키지는 쇼츠 한 채널만 만든다. 이미지·블로그까지 자동으로 만들면 검토 전에 돈이 나간다.
      */
     @PostMapping("/worker/morning-prep")
     fun morningPrep(): Map<String, String> = linkedMapOf(
         "news" to step { aiNewsService.refresh() },
         "briefing" to step { aiNewsBriefingService.refresh() },
-        "topicDraft" to step { topicDraftService.refresh() },
+        "package" to step {
+            val candidate = topicDraftService.nextCandidate() ?: throw IllegalArgumentException("초안으로 만들 새 주제가 없습니다.")
+            contentStudioService.create(CreateContentPackageRequest(
+                source = "${candidate.sourceTitle}\n\n${candidate.context}", channels = listOf("유튜브 쇼츠"),
+                sourceId = candidate.sourceId, keywordId = candidate.keyword?.id,
+            )).id
+        },
     )
 
     private fun step(block: () -> Any?): String = runCatching { block() }.fold({ "성공" }, { "실패: ${LlmClient.reasonOf(it)}" })
@@ -86,15 +93,6 @@ class ContentController(
                 .header(HttpHeaders.CACHE_CONTROL, "private, max-age=31536000, immutable")
                 .body(bytes)
         } ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "이미지를 찾을 수 없습니다.")
-
-    @PostMapping("/instagram-toons")
-    fun createInstagramToon(@RequestBody request: CreateInstagramToonRequest): InstagramToon = try {
-        instagramToonService.generate(request)
-    } catch (error: IllegalArgumentException) {
-        throw ResponseStatusException(HttpStatus.BAD_REQUEST, error.message)
-    } catch (error: IllegalStateException) {
-        throw ResponseStatusException(HttpStatus.BAD_GATEWAY, error.message)
-    }
 
     @GetMapping("/ai-news")
     fun aiNews() = aiNewsService.list()
@@ -122,34 +120,12 @@ class ContentController(
         throw ResponseStatusException(HttpStatus.BAD_GATEWAY, "AI 브리핑 처리 중 오류가 발생했습니다: ${LlmClient.reasonOf(error)}")
     }
 
-    @GetMapping("/topic-drafts")
-    fun topicDrafts() = topicDraftService.list()
-
     /** 대본 생성 화면의 "소식·키워드에서 주제 가져오기". 없으면 204. 키워드는 소진하지 않는다. */
     @GetMapping("/topic-candidates/next")
     fun nextTopicCandidate(): ResponseEntity<TopicCandidate> = try {
         topicDraftService.nextCandidate()?.let { ResponseEntity.ok(TopicCandidate.of(it)) } ?: ResponseEntity.noContent().build()
     } catch (error: IllegalStateException) {
         throw ResponseStatusException(HttpStatus.BAD_GATEWAY, error.message)
-    }
-
-    @PostMapping("/topic-drafts/refresh")
-    fun refreshTopicDrafts(): TopicDraft = try {
-        topicDraftService.refresh()
-    } catch (error: IllegalArgumentException) {
-        throw ResponseStatusException(HttpStatus.BAD_REQUEST, error.message)
-    } catch (error: IllegalStateException) {
-        throw ResponseStatusException(HttpStatus.BAD_GATEWAY, error.message)
-    } catch (error: Exception) {
-        throw ResponseStatusException(HttpStatus.BAD_GATEWAY, "주제 대본 초안 처리 중 오류가 발생했습니다: ${LlmClient.reasonOf(error)}")
-    }
-
-    // 알림 재시도. Slack 이 실패해도 초안은 이미 저장돼 있으므로 여기서만 다시 보낸다.
-    @PostMapping("/topic-drafts/{id}/notify")
-    fun notifyTopicDraft(@PathVariable id: String): TopicDraft = try {
-        topicDraftService.notify(id)
-    } catch (error: IllegalArgumentException) {
-        throw ResponseStatusException(HttpStatus.BAD_REQUEST, error.message)
     }
 }
 

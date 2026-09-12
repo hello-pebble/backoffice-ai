@@ -15,7 +15,7 @@ import java.util.concurrent.Executors
 
 /**
  * 원본 하나를 받아 체크된 채널마다 그 채널의 실제 에이전트를 돌린다.
- * 인스타툰·쇼츠는 기존 서비스가 만들고 각자 목록에도 저장한다(이미지 생성·Slack 검토 흐름 그대로).
+ * 인스타툰·쇼츠는 각 서비스가 만든다(툰 문서는 컷 이미지의 원천이라 계속 저장한다). Slack 검토 알림은 패키지당 한 번 여기서 보낸다.
  * 블로그는 워커 발행 큐(automation_content, 검토 대기)에 넣는다. 카드뉴스는 여기서 모델을 한 번 부른다.
  *
  * 4채널이면 1분을 넘겨 요청 스레드에서 기다리지 않는다(toon-image 와 같은 방식).
@@ -144,7 +144,7 @@ class ContentStudioService(
             val panels = toon.panels.joinToString("\n") { "${it.number}컷 · ${it.scene}\n  ${it.dialogue}" }
             ContentOutput(channel, toon.title, "${toon.caption}\n\n$panels", refId = toon.id)
         }
-        "유튜브 쇼츠" -> topicDraftService.draftFromText(title, req.source, req.sourceId, notify = false).let {
+        "유튜브 쇼츠" -> topicDraftService.draftFromText(title, req.source, req.sourceId).let {
             ContentOutput(channel, it.title, "[훅] ${it.hook}\n\n${it.script}\n\n${it.hashtags.joinToString(" ") { tag -> "#$tag" }}", refId = it.id)
         }
         "카드뉴스" -> generate(channel, "당신은 핵심만 남기는 한국어 카드뉴스 편집자입니다.", """다음 원본을 6장짜리 카드뉴스로 구성하세요. 원본에 없는 사실은 만들지 마세요.

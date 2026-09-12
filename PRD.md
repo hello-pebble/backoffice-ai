@@ -26,14 +26,12 @@
 | # | 화면 | 하는 일 | 구현 | 상태 |
 |---|---|---|---|---|
 | 1 | AI 운영 센터 | 실행 1건=행 1개. 기능·모델·기간 필터, 모델별 토큰·비용 집계, 6개월 보관 | `AiOperationsService`, `ai_operation_run` | 운영 |
-| 2 | 주제 대본 초안 | §2-3의 쇼츠 채널. 전용 폼 없음(2026-09-12 통합 1단계). "소식·키워드에서 주제 가져오기"가 우선순위 1건을 원본 칸에 채우고, 생성 성공 시 키워드 소진. 검토 대기 저장 + Slack 링크. 이전 결과 목록만 남음 | `TopicDraftService` | 운영 |
-| 3 | 대본 생성(콘텐츠 생성 에이전트) | 원본 1개 → 체크한 채널마다 실제 에이전트 실행. 출력마다 검토 상태(대기·승인·반려), 승인은 블로그만 발행 큐 `approved`로 넘김. Slack 알림은 패키지당 1건, 링크 `#content-package-{id}` (2026-09-12 통합 2단계). 인스타툰·쇼츠는 §2-4·§2-2 서비스 재사용(각 섹션에도 저장), 블로그는 워커 발행 큐(검토 대기), 카드뉴스는 모델 1회. 채널별 실패 격리. 요청은 202로 바로 끝나고 채널은 백그라운드에서 채워진다(화면 폴링) | `ContentStudioService`(오케스트레이터) | 운영 |
-| 4 | 인스타툰 | §2-3의 인스타툰 채널(4·8컷 선택). 전용 폼 없음(2026-09-12 통합 1단계). 컷 이미지(Imagen) 버튼은 패키지 카드에. 재시작 시 생성중 컷 자동 재개. 이전 결과 목록만 남음 | `InstagramToonService`, `ToonImageService` | 운영 |
-| 5 | 메일 | Gmail 읽기 전용 요약 | `GmailService` | 운영(주인만) |
-| 6 | 최신 소식 | RSS 수집 + 핵심 3건 요약 | `AiNewsService`, `AiNewsBriefingService` | 운영 |
-| 7 | 국내 관심 종목 | 토스증권 현재가 | `TossService` | 운영(설정 시) |
-| 8 | Slack 연결 | 앱 설치·채널 선택. 알림만, 본문 전송 없음 | `SlackService` | 운영 |
-| 9 | 블로그 자동화 | 키워드 수집 → 글 생성 → 네이버 발행 | Python 워커 | 워커 배포 시. 발행은 기본 꺼짐 |
+| 2 | 대본 생성 | 원본 1개(직접 입력 또는 "소식·키워드에서 주제 가져오기") → 체크한 채널마다 에이전트 실행. 쇼츠 대본(`TopicDraftService`), 인스타툰 4·8컷 대본 + 컷 이미지 버튼(`InstagramToonService`, `ToonImageService`), 카드뉴스, 블로그 발행 큐. 요청은 202로 끝나고 채널은 백그라운드. 출력마다 검토 대기·승인·반려, 승인은 블로그만 `approved`로. Slack 알림은 패키지당 1건(`#content-package-{id}`). 생성 성공 시 키워드 소진. 2026-09-12 세 섹션을 이걸로 통합 | `ContentStudioService`(오케스트레이터) | 운영 |
+| 3 | 메일 | Gmail 읽기 전용 요약 | `GmailService` | 운영(주인만) |
+| 4 | 최신 소식 | RSS 수집 + 핵심 3건 요약 | `AiNewsService`, `AiNewsBriefingService` | 운영 |
+| 5 | 국내 관심 종목 | 토스증권 현재가 | `TossService` | 운영(설정 시) |
+| 6 | Slack 연결 | 앱 설치·채널 선택. 알림만, 본문 전송 없음 | `SlackService` | 운영 |
+| 7 | 블로그 자동화 | 키워드 수집 → 글 생성 → 네이버 발행 | Python 워커 | 워커 배포 시. 발행은 기본 꺼짐 |
 | – | 데모 모드 | 로그인 없이 둘러보기. AI는 실제 실행, 개인 연동은 차단, 문서 키·owner로 격리 | `DemoMode`, `SessionAuthFilter` | 운영 |
 
 ---
@@ -89,6 +87,7 @@ v1.0의 CSV 저장, SQLite, Windows 작업 스케줄러, Telegram 알림은 없�
 
 | 중복 | 근거 | 결정 |
 |---|---|---|
+| **주제 초안·인스타툰 전용 라우트·섹션** | `POST /api/topic-drafts/refresh`, `POST /api/topic-drafts/{id}/notify`, `GET /api/topic-drafts`, `POST /api/instagram-toons`, 두 섹션, `demo/topic-drafts.json`. 프론트 참조 0건 | **삭제 완료(2026-09-12 통합 3단계).** 두 서비스는 패키지의 채널 에이전트로만 남고, 아침 사전 준비는 초안 대신 쇼츠 패키지를 만든다 |
 | **콘텐츠 생성 에이전트 ↔ 인스타툰·주제 초안·블로그** | 과거에는 §2-3이 같은 결과물을 템플릿 문자열로 흉내 냈고 운영 센터에 0원 행을 남겼다 | **통합 완료(2026-09-06).** §2-3은 새 생성기 없이 기존 에이전트를 채널별로 호출하는 오케스트레이터다. 템플릿·`초안 템플릿` 기록·죽은 파일 경로 필드 제거 |
 | **인스타툰 Python ↔ Kotlin** | `automation/jobs/instagram_toon/`, `scripts/run_instagram_toon.py`, `INSTAGRAM_TOON_MODEL`, `INSTAGRAM_TOONS_DIR`, `data/instagram-toons/`. 대시보드는 Kotlin만 부르고 Python 쪽 참조 0건 | **삭제.** 로컬 CLI 용도도 대시보드로 대체됐다 |
 | **업무·승인·KPI(CEO Office 잔재)** | `/api/operations`·`/api/tasks`·`/api/approvals`, `OperationsService.sample()`(김지수·광고 소재 제작비), `task`·`approval`·`dashboard_kpi` 테이블. 프론트 참조 0건 | **삭제.** 라우트·서비스·샘플·테스트 제거. 테이블은 다음 마이그레이션에서 drop |
