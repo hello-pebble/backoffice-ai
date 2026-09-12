@@ -42,16 +42,19 @@ class ContentStudioService(
         require(channels.isNotEmpty()) { "만들 콘텐츠 채널을 하나 이상 선택하세요." }
         val source = request.source.trim()
         val title = source.replace(Regex("\\s+"), " ").take(34).trimEnd(' ', '.', '。')
-        val tone = request.tone.ifBlank { "공감형" }
-        val target = request.target.ifBlank { "관심 고객" }
+        // 데모는 키워드를 읽지도 소진하지도 않는다.
+        val req = request.copy(
+            source = source, tone = request.tone.ifBlank { "공감형" }, target = request.target.ifBlank { "관심 고객" },
+            keywordId = if (DemoContext.isDemo()) null else request.keywordId,
+        )
         // ThreadLocal 은 백그라운드 스레드로 따라가지 않는다. 요청 스레드에 있는 지금 꺼내 둔다.
         val sessionKey = DemoContext.sessionKey()
         val packageItem = ContentPackage(
-            UUID.randomUUID().toString(), title, source, tone, target, OffsetDateTime.now().toString(),
+            UUID.randomUUID().toString(), title, source, req.tone, req.target, OffsetDateTime.now().toString(),
             channels.map { ContentOutput(it, title, "", status = PENDING) },
         )
         synchronized(this) { save((listOf(packageItem) + list()).take(30)) }
-        pool.submit { runChannels(packageItem.id, sessionKey, channels, title, source, tone, target) }
+        pool.submit { runChannels(packageItem.id, sessionKey, channels, title, req) }
         return packageItem
     }
 
@@ -70,13 +73,15 @@ class ContentStudioService(
         })
     }
 
-    private fun runChannels(packageId: String, sessionKey: String?, channels: List<String>, title: String, source: String, tone: String, target: String) {
+    private fun runChannels(packageId: String, sessionKey: String?, channels: List<String>, title: String, req: CreateContentPackageRequest) {
         // 여기서 DemoContext 를 다시 켜지 않으면 데모 방문자의 결과와 기록이 주인 데이터에 섞인다.
         sessionKey?.let { DemoContext.set(it) }
         try {
+            var succeeded = false
             for (channel in channels) {
-                val output = runCatching { run(channel, title, source, tone, target) }
+                val output = runCatching { run(channel, title, req) }
                     .getOrElse { ContentOutput(channel, title, "", status = "실패", error = LlmClient.reasonOf(it)) }
+                if (output.status != "실패") succeeded = true
                 // 채널 하나만 갈아 끼운다. 그 사이 다른 요청이 목록을 바꿨을 수 있어 매번 다시 읽는다.
                 synchronized(this) {
                     save(list().map { item ->
@@ -85,33 +90,35 @@ class ContentStudioService(
                     })
                 }
             }
+            // 키워드는 대본이 하나라도 나왔을 때만 소진한다. 실패하면 다음에 같은 키워드를 다시 쓸 수 있다.
+            if (succeeded && req.keywordId != null) automationRepository.markKeywordUsed(req.keywordId)
         } finally {
             DemoContext.clear()
         }
     }
 
-    private fun run(channel: String, title: String, source: String, tone: String, target: String): ContentOutput = when (channel) {
-        "인스타툰" -> instagramToonService.generate(CreateInstagramToonRequest(episode = source, tone = tone, panelCount = 4)).let { toon ->
+    private fun run(channel: String, title: String, req: CreateContentPackageRequest): ContentOutput = when (channel) {
+        "인스타툰" -> instagramToonService.generate(CreateInstagramToonRequest(episode = req.source, tone = req.tone, panelCount = req.panelCount)).let { toon ->
             val panels = toon.panels.joinToString("\n") { "${it.number}컷 · ${it.scene}\n  ${it.dialogue}" }
             ContentOutput(channel, toon.title, "${toon.caption}\n\n$panels", refId = toon.id)
         }
-        "유튜브 쇼츠" -> topicDraftService.draftFromText(title, source).let {
+        "유튜브 쇼츠" -> topicDraftService.draftFromText(title, req.source, req.sourceId).let {
             ContentOutput(channel, it.title, "[훅] ${it.hook}\n\n${it.script}\n\n${it.hashtags.joinToString(" ") { tag -> "#$tag" }}", refId = it.id)
         }
         "카드뉴스" -> generate(channel, "당신은 핵심만 남기는 한국어 카드뉴스 편집자입니다.", """다음 원본을 6장짜리 카드뉴스로 구성하세요. 원본에 없는 사실은 만들지 마세요.
-톤=$tone, 대상=$target
+톤=${req.tone}, 대상=${req.target}
 반드시 JSON만 반환하세요: {"title":"제목","cards":[{"number":1,"headline":"한 줄 헤드라인","body":"두세 문장"}]}.
 
-원본=$source""") { node ->
+원본=${req.source}""") { node ->
             val cards = node.path("cards").joinToString("\n\n") { "${it.path("number").asInt()}장. ${it.path("headline").asText()}\n${it.path("body").asText()}" }
             check(cards.isNotBlank()) { "카드뉴스 응답에 cards 가 없습니다." }
             ContentOutput(channel, node.path("title").asText(title), cards)
         }
         else -> generate(channel, "당신은 사실을 과장하지 않는 한국어 블로그 작가입니다.", """다음 원본을 바탕으로 블로그 글을 쓰세요. 원본에 없는 수치·사실은 만들지 마세요.
-본문은 공백 포함 1500자 이상, 소제목을 넣습니다. 톤=$tone, 대상=$target
+본문은 공백 포함 1500자 이상, 소제목을 넣습니다. 톤=${req.tone}, 대상=${req.target}
 반드시 JSON만 반환하세요: {"title":"제목","content":"본문","tags":["태그"]}.
 
-원본=$source""") { node ->
+원본=${req.source}""") { node ->
             val body = node.path("content").asText("")
             check(body.isNotBlank()) { "블로그 응답에 content 가 없습니다." }
             val blogTitle = node.path("title").asText(title)
@@ -156,7 +163,11 @@ class ContentStudioService(
     }
 }
 
-data class CreateContentPackageRequest(val source: String = "", val tone: String = "공감형", val target: String = "", val channels: List<String> = emptyList())
+/** sourceId·keywordId 는 원본을 "소식·키워드에서 주제 가져오기"로 채웠을 때만 온다. 쇼츠 초안의 주제 중복 제외와 키워드 소진에 쓴다. */
+data class CreateContentPackageRequest(
+    val source: String = "", val tone: String = "공감형", val target: String = "", val channels: List<String> = emptyList(),
+    val panelCount: Int = 4, val sourceId: String? = null, val keywordId: Long? = null,
+)
 data class ContentPackage(val id: String, val title: String, val source: String, val tone: String, val target: String, val createdAt: String, val outputs: List<ContentOutput>)
 /** status: 생성중 → 성공 | 실패. refId: 인스타툰 id·초안 id·블로그 큐 id. 화면이 "어느 섹션에서 이어서 하는지" 안내할 때 쓴다. */
 data class ContentOutput(val channel: String, val title: String, val body: String, val status: String = "성공", val error: String? = null, val refId: String? = null)

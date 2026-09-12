@@ -6,6 +6,9 @@ import com.backoffice.dashboard.operations.*
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito.mock
+import org.mockito.Mockito.never
+import org.mockito.Mockito.verify
+import org.mockito.Mockito.`when`
 import java.time.OffsetDateTime
 import kotlin.test.assertEquals
 // import kotlin.test.assertNotNull  // 위 주석 처리한 단언에서만 쓰던 import
@@ -76,6 +79,24 @@ class TopicDraftServiceTest {
         assertTrue(draft.sourceId.startsWith("studio-"))
         assertEquals("REVIEW_PENDING", draft.reviewStatus)
         assertEquals(draft.id, service.list().single().id)
+        // 소식에서 가져온 원본은 그 소식 id 를 남겨 nextCandidate 가 같은 주제를 다시 고르지 않는다.
+        assertEquals("news-1", DraftSource.fromText("제목", "원본", "news-1").sourceId)
+    }
+
+    @Test
+    fun `주제 가져오기는 소식·키워드 중 점수가 높은 쪽을 주되 키워드를 소진하지 않는다`() {
+        val news = mock(AiNewsService::class.java)
+        val automation = mock(AutomationRepository::class.java)
+        `when`(news.refresh()).thenReturn(listOf(news("a", "연구·안전", 40)))
+        `when`(automation.unusedKeywords(1)).thenReturn(listOf(AutomationKeyword(7, "AI 에이전트", 3000, "에이전트", null, false, 5)))
+        val properties = OfficeProperties()
+        val service = TopicDraftService(properties, news, automation, ObjectMapper(), mock(AiOperationsService::class.java), documents, LlmClient(properties, ObjectMapper()), SlackService(properties, ObjectMapper(), documents))
+
+        val candidate = service.nextCandidate()!!
+
+        assertEquals("keyword-7", candidate.sourceId)
+        assertEquals(7L, TopicCandidate.of(candidate).keywordId)
+        verify(automation, never()).markKeywordUsed(7)
     }
 
     @Test

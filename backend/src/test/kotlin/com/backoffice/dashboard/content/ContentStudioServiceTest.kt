@@ -64,7 +64,7 @@ class ContentStudioServiceTest {
     @Test
     fun `체크된 채널만 각자의 에이전트로 만들고 저장한다`() {
         `when`(toons.generate(anyArg())).thenReturn(toon())
-        `when`(drafts.draftFromText(anyString(), anyString())).thenReturn(draft())
+        `when`(drafts.draftFromText(anyString(), anyString(), anyArg())).thenReturn(draft())
 
         val result = service.create(CreateContentPackageRequest(source = source, channels = listOf("인스타툰", "유튜브 쇼츠", "틱톡")))
 
@@ -88,6 +88,35 @@ class ContentStudioServiceTest {
         assertEquals("모델 401", toon.error)
         assertEquals("성공", cards.status)
         assertTrue(cards.body.startsWith("1장. 헤드"))
+    }
+
+    @Test
+    fun `컷 수와 원본 id 를 채널 에이전트에 넘기고 성공하면 키워드를 소진한다`() {
+        var toonRequest: CreateInstagramToonRequest? = null
+        doAnswer { toonRequest = it.getArgument(0); toon() }.`when`(toons).generate(anyArg())
+        `when`(drafts.draftFromText(anyString(), anyString(), anyArg())).thenReturn(draft())
+
+        service.create(CreateContentPackageRequest(source = source, channels = listOf("인스타툰", "유튜브 쇼츠"), panelCount = 8, sourceId = "news-1", keywordId = 7))
+
+        assertEquals(8, toonRequest?.panelCount)
+        verify(drafts).draftFromText(anyString(), anyString(), org.mockito.ArgumentMatchers.eq("news-1"))
+        verify(automation).markKeywordUsed(7)
+    }
+
+    @Test
+    fun `전부 실패하거나 데모면 키워드를 소진하지 않는다`() {
+        `when`(toons.generate(anyArg())).thenThrow(IllegalStateException("모델 401"))
+        service.create(CreateContentPackageRequest(source = source, channels = listOf("인스타툰"), keywordId = 7))
+        verify(automation, never()).markKeywordUsed(7)
+
+        llmAnswers("""{"title":"카드 제목","cards":[{"number":1,"headline":"헤드","body":"본문"}]}""")
+        DemoContext.set("demo-session")
+        try {
+            service.create(CreateContentPackageRequest(source = source, channels = listOf("카드뉴스"), keywordId = 7))
+        } finally {
+            DemoContext.clear()
+        }
+        verify(automation, never()).markKeywordUsed(7)
     }
 
     @Test

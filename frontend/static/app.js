@@ -70,10 +70,17 @@ function renderAiOperations(d){
 }
 $('ai-operation-list').addEventListener('click',e=>{const b=e.target.closest('button[data-ai-step]');if(!b)return;AI_OPS.page+=Number(b.dataset.aiStep);loadAiOperations()});
 ['ai-filter-agent','ai-filter-model','ai-filter-range'].forEach(id=>$(id).onchange=()=>{AI_OPS.page=0;loadAiOperations()});
-function renderContentPackages(items){renderPaged('content-package-list',items,'content-package-list','아직 생성된 콘텐츠 패키지가 없습니다.',item=>`<article class="content-package"><b>${esc(item.title)}</b><p>${esc(item.tone)} · ${esc(item.target)} · ${esc(item.createdAt.replace('T',' ').slice(0,16))}</p><div class="content-output-grid">${item.outputs.map(output=>output.status==='생성중'?`<details><summary>${esc(output.channel)} · 생성 중…</summary></details>`:output.status==='실패'?`<details><summary>${esc(output.channel)} · 실패</summary><p class="muted">${esc(output.error||'생성에 실패했습니다.')}</p></details>`:`<details><summary>${esc(output.channel)} · ${esc(output.title)}</summary>${output.refId?`<p class="muted">${esc(OUTPUT_NEXT[output.channel]||'')}</p>`:''}<pre>${esc(output.body)}</pre></details>`).join('')}</div></article>`)}
-const OUTPUT_NEXT={'인스타툰':'인스타툰 대본 섹션에서 컷 이미지를 만들 수 있습니다.','유튜브 쇼츠':'주제 대본 초안 섹션에서 검토합니다. Slack 알림이 갔습니다.','블로그':'블로그 발행 큐(검토 대기)에 저장했습니다.'};
+function renderContentPackages(items){renderPaged('content-package-list',items,'content-package-list','아직 생성된 콘텐츠 패키지가 없습니다.',item=>`<article class="content-package"><b>${esc(item.title)}</b><p>${esc(item.tone)} · ${esc(item.target)} · ${esc(item.createdAt.replace('T',' ').slice(0,16))}</p><div class="content-output-grid">${item.outputs.map(output=>output.status==='생성중'?`<details><summary>${esc(output.channel)} · 생성 중…</summary></details>`:output.status==='실패'?`<details><summary>${esc(output.channel)} · 실패</summary><p class="muted">${esc(output.error||'생성에 실패했습니다.')}</p></details>`:`<details><summary>${esc(output.channel)} · ${esc(output.title)}</summary>${output.refId?`<p class="muted">${esc(OUTPUT_NEXT[output.channel]||'')}</p>`:''}<pre>${esc(output.body)}</pre>${outputExtra(output)}</details>`).join('')}</div></article>`)}
+const OUTPUT_NEXT={'블로그':'블로그 발행 큐(검토 대기)에 저장했습니다.'};
+// 패키지 카드가 refId 로 툰·초안을 찾아 컷 이미지 버튼과 Slack 상태를 붙인다. 두 목록을 그릴 때 채운다.
+const TOONS={},DRAFTS={};
+function outputExtra(o){
+ if(o.channel==='인스타툰'&&TOONS[o.refId]){const t=TOONS[o.refId];return `<p class="meta">${toonImageButton(t)}</p>${t.panels.map(p=>panelImage(t,p)).join('')}`}
+ if(o.channel==='유튜브 쇼츠'&&DRAFTS[o.refId]){const d=DRAFTS[o.refId];return `<p class="meta"><span class="tag wait">검토 대기</span> <span class="tag ${d.slackStatus==='SENT'?'done':'late'}">${esc(SLACK_LABEL[d.slackStatus]||d.slackStatus)}</span>${d.slackStatus==='SENT'?'':` <button class="light" data-notify-id="${esc(d.id)}">Slack 알림 재시도</button>`}</p>`}
+ return ''
+}
 const SLACK_LABEL={SENT:'Slack 전송됨',FAILED:'Slack 전송 실패',NOT_CONFIGURED:'Slack 미설정'};
-function renderTopicDrafts(items){renderPaged('topic-draft-list',items,'topic-draft-list','아직 생성된 대본 초안이 없습니다.',x=>`<article class="topic-draft" id="topic-draft-${esc(x.id)}"><div class="topic-draft-head"><div><b>${esc(x.title)}</b><p class="meta"><span class="tag wait">검토 대기</span> <span class="tag ${x.slackStatus==='SENT'?'done':'late'}">${esc(SLACK_LABEL[x.slackStatus]||x.slackStatus)}</span> ${esc(x.source)} · ${esc(x.category)} · 우선순위 ${Number(x.priorityScore).toFixed(2)} · ${esc(x.createdAt.replace('T',' ').slice(0,16))}</p></div>${x.slackStatus==='SENT'?'':`<button class="light" data-notify-id="${esc(x.id)}">Slack 알림 재시도</button>`}</div><p class="hook">${esc(x.hook)}</p><pre>${esc(x.script)}</pre><p class="meta">${(x.hashtags||[]).map(t=>esc(t)).join(' ')}</p>${x.slackError?`<p class="slack-error">${esc(x.slackError)}</p>`:''}${x.sourceUrl?`<a class="text-link" href="${esc(x.sourceUrl)}" target="_blank" rel="noreferrer">출처 원문 열기</a>`:''}</article>`);focusHashDraft()}
+function renderTopicDrafts(items){if(items)items.forEach(x=>DRAFTS[x.id]=x);renderPaged('topic-draft-list',items,'topic-draft-list','아직 생성된 대본 초안이 없습니다.',x=>`<article class="topic-draft" id="topic-draft-${esc(x.id)}"><div class="topic-draft-head"><div><b>${esc(x.title)}</b><p class="meta"><span class="tag wait">검토 대기</span> <span class="tag ${x.slackStatus==='SENT'?'done':'late'}">${esc(SLACK_LABEL[x.slackStatus]||x.slackStatus)}</span> ${esc(x.source)} · ${esc(x.category)} · 우선순위 ${Number(x.priorityScore).toFixed(2)} · ${esc(x.createdAt.replace('T',' ').slice(0,16))}</p></div>${x.slackStatus==='SENT'?'':`<button class="light" data-notify-id="${esc(x.id)}">Slack 알림 재시도</button>`}</div><p class="hook">${esc(x.hook)}</p><pre>${esc(x.script)}</pre><p class="meta">${(x.hashtags||[]).map(t=>esc(t)).join(' ')}</p>${x.slackError?`<p class="slack-error">${esc(x.slackError)}</p>`:''}${x.sourceUrl?`<a class="text-link" href="${esc(x.sourceUrl)}" target="_blank" rel="noreferrer">출처 원문 열기</a>`:''}</article>`);focusHashDraft()}
 // Slack 알림의 검토 링크는 특정 초안을 가리킨다. 그 초안이 뒤 페이지에 있으면
 // 링크를 눌러도 아무 일이 없으므로, 해당 페이지로 옮긴 뒤 그 카드로 스크롤한다.
 function focusHashDraft(){const id=location.hash.replace('#topic-draft-','');if(!id||id===location.hash)return;const s=pageState['topic-draft-list'],i=s.items.findIndex(x=>x.id===id);if(i<0)return;const page=Math.floor(i/PAGE_SIZE);if(page!==s.page){s.page=page;renderPaged('topic-draft-list')}document.getElementById('topic-draft-'+id)?.scrollIntoView({block:'center'})}
@@ -102,7 +109,7 @@ function toonImageButton(x){
  return `<button class="light" data-toon-image="${esc(x.id)}">${label}</button>`;
 }
 // 컷은 접어 둔다. 8컷이면 카드 하나가 화면을 다 먹는다.
-function renderToons(items){renderPaged('toon-list',items,'toon-list','아직 생성된 인스타툰 대본이 없습니다.',x=>`<article class="content-package"><div class="topic-draft-head"><div><b>${esc(x.title)}</b><p>${esc(x.tone)} · ${x.panel_count}컷 · ${esc(x.model||'')} · ${esc(x.created_at.replace('T',' ').slice(0,16))}</p></div>${toonImageButton(x)}</div><p class="hook">${esc(x.caption)}</p><p class="meta">${(x.hashtags||[]).map(t=>esc(t)).join(' ')}</p><div class="content-output-grid">${x.panels.map(p=>`<details><summary>${p.number}컷 · ${esc(p.scene)}</summary>${panelImage(x,p)}<pre>대사: ${esc(p.dialogue)}\n나레이션: ${esc(p.narration)}\n\n이미지 프롬프트\n${esc(p.image_prompt)}</pre></details>`).join('')}</div></article>`)}
+function renderToons(items){if(items)items.forEach(x=>TOONS[x.id]=x);renderPaged('toon-list',items,'toon-list','아직 생성된 인스타툰 대본이 없습니다.',x=>`<article class="content-package"><div class="topic-draft-head"><div><b>${esc(x.title)}</b><p>${esc(x.tone)} · ${x.panel_count}컷 · ${esc(x.model||'')} · ${esc(x.created_at.replace('T',' ').slice(0,16))}</p></div>${toonImageButton(x)}</div><p class="hook">${esc(x.caption)}</p><p class="meta">${(x.hashtags||[]).map(t=>esc(t)).join(' ')}</p><div class="content-output-grid">${x.panels.map(p=>`<details><summary>${p.number}컷 · ${esc(p.scene)}</summary>${panelImage(x,p)}<pre>대사: ${esc(p.dialogue)}\n나레이션: ${esc(p.narration)}\n\n이미지 프롬프트\n${esc(p.image_prompt)}</pre></details>`).join('')}</div></article>`)}
 
 const j=u=>fetch(u).then(r=>r.ok?(r.status===204?null:r.json()):null).catch(()=>null);
 // 응답을 다 모아 기다리지 않고 도착하는 대로 그린다. 외부 API(Gmail·토스)를 부르는
@@ -127,7 +134,7 @@ $('news-list').addEventListener('click',e=>{const a=e.target.closest('a[data-new
 $('news-refresh').onclick=async()=>{const b=$('news-refresh');b.disabled=true;b.textContent='수집 중…';try{if(pageState['news-list'])pageState['news-list'].page=0;renderNews(await fetch('/api/ai-news/refresh',{method:'POST'}).then(r=>r.json()))}finally{b.disabled=false;b.textContent='소식 가져오기'}};
 $('briefing-refresh').onclick=async()=>{const b=$('briefing-refresh');b.disabled=true;b.textContent='요약 중…';try{const r=await fetch('/api/ai-news/briefing/refresh',{method:'POST'});if(!r.ok){const error=await r.json();throw new Error(error.detail||'요약 생성에 실패했습니다.')}renderBriefing(await r.json())}catch(error){alert(error.message)}finally{b.disabled=false;b.textContent='핵심 3건 요약';await loadAiOperations()}};
 $('ai-operations-refresh').onclick=loadAiOperations;
-$('content-package-form').onsubmit=async e=>{e.preventDefault();const form=e.target,button=$('content-package-submit');const data=new FormData(form);const payload={source:data.get('source'),tone:data.get('tone'),target:data.get('target'),channels:data.getAll('channels')};button.disabled=true;button.textContent='패키지 생성 중…';try{const r=await fetch('/api/content-packages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});if(!r.ok){const error=await r.json();throw new Error(error.detail||'콘텐츠 패키지 생성에 실패했습니다.')}form.reset();renderContentPackages(await j('/api/content-packages')||[]);pollPackages()}catch(error){alert(error.message)}finally{button.disabled=false;button.textContent='콘텐츠 패키지 생성'}};
+$('content-package-form').onsubmit=async e=>{e.preventDefault();const form=e.target,button=$('content-package-submit');const data=new FormData(form);const payload={source:data.get('source'),tone:data.get('tone'),target:data.get('target'),channels:data.getAll('channels'),panelCount:Number(data.get('panelCount')),sourceId:data.get('sourceId')||null,keywordId:data.get('keywordId')?Number(data.get('keywordId')):null};button.disabled=true;button.textContent='패키지 생성 중…';try{const r=await fetch('/api/content-packages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});if(!r.ok){const error=await r.json();throw new Error(error.detail||'콘텐츠 패키지 생성에 실패했습니다.')}form.reset();form.sourceId.value='';form.keywordId.value='';renderContentPackages(await j('/api/content-packages')||[]);pollPackages()}catch(error){alert(error.message)}finally{button.disabled=false;button.textContent='콘텐츠 패키지 생성'}};
 // 채널은 서버가 백그라운드에서 채운다(202). 생성중이 사라질 때까지 목록을 다시 읽고, 끝나면 툰·초안·운영 센터도 갱신한다.
 let packageTimer=null;
 function pollPackages(){
@@ -136,33 +143,19 @@ function pollPackages(){
   const items=await j('/api/content-packages');if(!items)return;
   renderContentPackages(items);
   if(items.some(x=>x.outputs.some(o=>o.status==='생성중')))pollPackages();
-  else{renderToons(await j('/api/instagram-toons')||[]);renderTopicDrafts(await j('/api/topic-drafts')||[]);await loadAiOperations()}
+  else{renderToons(await j('/api/instagram-toons')||[]);renderTopicDrafts(await j('/api/topic-drafts')||[]);renderContentPackages();await loadAiOperations()}
  },3000);
 }
-$('topic-draft-refresh').onclick=async()=>{const b=$('topic-draft-refresh');b.disabled=true;b.textContent='초안 생성 중…';try{const r=await fetch('/api/topic-drafts/refresh',{method:'POST'});if(!r.ok){const error=await r.json().catch(()=>({}));throw new Error(error.detail||'대본 초안 생성에 실패했습니다.')}renderTopicDrafts(await j('/api/topic-drafts')||[])}catch(error){alert(error.message)}finally{b.disabled=false;b.textContent='주제 수집 및 초안 생성';await loadAiOperations()}};
-$('topic-draft-list').addEventListener('click',async e=>{const button=e.target.closest('button[data-notify-id]');if(!button)return;button.disabled=true;button.textContent='재시도 중…';try{const r=await fetch(`/api/topic-drafts/${button.dataset.notifyId}/notify`,{method:'POST'});if(!r.ok){const error=await r.json().catch(()=>({}));throw new Error(error.detail||'Slack 알림 재시도에 실패했습니다.')}const draft=await r.json();if(draft.slackStatus!=='SENT')alert(`Slack 알림을 보내지 못했습니다: ${draft.slackError||'웹훅이 설정되지 않았습니다.'}`);renderTopicDrafts(await j('/api/topic-drafts')||[])}catch(error){alert(error.message);button.disabled=false;button.textContent='Slack 알림 재시도'}});
-$('toon-form').onsubmit=async e=>{
- e.preventDefault();
- const form=e.target,button=$('toon-submit'),data=new FormData(form);
- const payload={episode:data.get('episode'),tone:data.get('tone'),panelCount:Number(data.get('panelCount'))};
- button.disabled=true;button.textContent='대본 생성 중…';
- try{
-  const r=await fetch('/api/instagram-toons',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-  if(!r.ok){const error=await r.json().catch(()=>({}));throw new Error(error.detail||'대본 생성에 실패했습니다.')}
-  form.reset();
-  if(pageState['toon-list'])pageState['toon-list'].page=0;
-  renderToons(await j('/api/instagram-toons')||[]);
-  await loadAiOperations();
- }catch(error){alert(error.message)}
- finally{button.disabled=false;button.textContent='대본과 이미지 프롬프트 생성'}
-};
-$('toon-list').addEventListener('click',async e=>{
+// 소식·키워드에서 우선순위 1건을 가져와 원본 칸을 채운다. 생성은 사용자가 채널을 고르고 누른다.
+$('topic-candidate').onclick=async()=>{const b=$('topic-candidate'),form=$('content-package-form');b.disabled=true;b.textContent='가져오는 중…';try{const r=await fetch('/api/topic-candidates/next');if(r.status===204){alert('새 주제가 없습니다. 소식이나 키워드가 갱신된 뒤 다시 시도하세요.');return}if(!r.ok){const error=await r.json().catch(()=>({}));throw new Error(error.detail||'주제를 가져오지 못했습니다.')}const c=await r.json();form.source.value=`${c.title}\n\n${c.context}`;form.sourceId.value=c.sourceId;form.keywordId.value=c.keywordId??''}catch(error){alert(error.message)}finally{b.disabled=false;b.textContent='소식·키워드에서 주제 가져오기'}};
+document.addEventListener('click',async e=>{const button=e.target.closest('button[data-notify-id]');if(!button)return;button.disabled=true;button.textContent='재시도 중…';try{const r=await fetch(`/api/topic-drafts/${button.dataset.notifyId}/notify`,{method:'POST'});if(!r.ok){const error=await r.json().catch(()=>({}));throw new Error(error.detail||'Slack 알림 재시도에 실패했습니다.')}const draft=await r.json();if(draft.slackStatus!=='SENT')alert(`Slack 알림을 보내지 못했습니다: ${draft.slackError||'웹훅이 설정되지 않았습니다.'}`);renderTopicDrafts(await j('/api/topic-drafts')||[])}catch(error){alert(error.message);button.disabled=false;button.textContent='Slack 알림 재시도'}});
+document.addEventListener('click',async e=>{
  const button=e.target.closest('[data-toon-image]');if(!button)return;
  button.disabled=true;
  try{
   const r=await fetch(`/api/instagram-toons/${encodeURIComponent(button.dataset.toonImage)}/images`,{method:'POST'});
   if(!r.ok){const error=await r.json().catch(()=>({}));throw new Error(error.detail||'이미지 생성을 시작하지 못했습니다.')}
-  renderToons(await j('/api/instagram-toons')||[]);
+  renderToons(await j('/api/instagram-toons')||[]);renderContentPackages();
   pollToons();
  }catch(error){alert(error.message);button.disabled=false}
 });
@@ -172,7 +165,7 @@ function pollToons(){
  clearTimeout(toonTimer);
  toonTimer=setTimeout(async()=>{
   const items=await j('/api/instagram-toons');if(!items)return;
-  renderToons(items);
+  renderToons(items);renderContentPackages();
   if(items.some(x=>(x.images||[]).some(i=>i.status==='생성중')))pollToons();
   else{await loadAiOperations()}
  },3000);
