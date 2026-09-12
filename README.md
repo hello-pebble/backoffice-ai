@@ -12,9 +12,9 @@
 |---|---|---|
 | AI 운영 센터 | 모델별 실행·입출력 토큰·비용·시간 집계, 기능/모델/기간 필터 | Kotlin |
 | 최신 소식 | 공식 RSS 수집과 핵심 3건 요약 | Kotlin + LLM |
-| 대본 생성 | 원본(직접 입력 또는 소식·키워드에서 가져오기) 하나로 체크한 채널마다 에이전트 실행. 쇼츠 대본, 인스타툰 4·8컷 대본과 컷 이미지, 카드뉴스, 블로그. 요청은 바로 끝나고 채널은 백그라운드에서 채워짐. 출력마다 승인·반려, Slack 알림은 패키지당 1건 | Kotlin + LLM·Imagen |
+| 대본 생성 | 원본(직접 입력 또는 소식·키워드에서 가져오기) 하나로 체크한 채널마다 에이전트 실행. 쇼츠 대본, 인스타툰 4·8컷 대본과 컷 이미지, 카드뉴스, 블로그. 요청은 바로 끝나고 채널은 백그라운드에서 채워짐. 출력마다 승인·반려·복사, 검토 대기 필터, Slack 알림은 패키지당 1건. 헤더의 "동작 보기"로 요청·상태 변화·AI 실행을 실시간 확인 | Kotlin + LLM·Imagen |
 | 메일·국내 관심 종목 | Gmail 읽기 전용 요약, 토스증권 현재가 | Kotlin |
-| 블로그 자동화 | 키워드 수집 → 글 생성 → 네이버 발행 | Python 워커 |
+| 블로그 자동화 | 구글 트렌드 최근 7일 키워드 수집(포함어 필터) → 글 생성 → 승인된 글만 네이버 발행 | Python 워커 |
 | 데모 모드 | 로그인 없이 둘러보기(AI는 실제 실행, 개인 계정 연동은 차단) | Kotlin |
 
 ## 시스템 요구사항
@@ -45,7 +45,7 @@ Copy-Item config\dashboard.properties.example config\dashboard.properties
 backoffice-ai/
 ├── backend/                 # Kotlin · Spring API + 화면 서빙
 │   └── src/main/resources/
-│       ├── db/migration/    # Flyway V1~V7
+│       ├── db/migration/    # Flyway V1~V10
 │       └── demo/            # 데모 씨앗 데이터
 ├── frontend/static/         # HTML·CSS·JS (빌드 도구 없음)
 ├── automation/              # Python 블로그 자동화 워커

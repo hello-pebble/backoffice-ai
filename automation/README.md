@@ -10,7 +10,7 @@
 - `worker_api.py`: FastAPI 서버. Railway에서 백엔드(Kotlin `PythonAutomationService`)가 `POST /run`으로 원격 트리거할 때 사용(`X-Worker-Api-Key` 헤더 인증, 동시 실행은 락으로 방지)
 - `jobs/`: 키워드 수집(`keyword_collector.py` — 구글 트렌드 최근 `GOOGLE_TRENDS_HOURS`시간(기본 7일) 인기 검색어를 `KEYWORD_INCLUDE` 포함어로 걸러 저장, 내부 API 실패 시 당일 RSS. 네이버 연동은 TODO), 콘텐츠 생성(`content_generator.py`), 포스팅(`blog_poster.py` — 백엔드가 준 `approved` 글만 발행, 완료는 상태만 PATCH), 스케줄링(`scheduler.py` — 키워드·콘텐츠·포스팅 크론에 더해 `MORNING_PREP_TIME`에 백엔드 `/api/worker/morning-prep`를 불러 아침 점검용 소식·요약·초안을 미리 만듦)
 - `jobs/instagram_toon/`, `scripts/run_instagram_toon.py`: 로컬 CLI 전용 인스타툰 생성기(대시보드는 Kotlin 쪽을 씁니다)
-- `shared/`: 화면·특정 업무에 종속되지 않는 재사용 유틸 — `logger.py`, `backend_client.py`(백엔드 API 호출), `usage.py`(토큰 사용량 집계)
+- `shared/`: 화면·특정 업무에 종속되지 않는 재사용 유틸 — `logger.py`, `backend_client.py`(백엔드 API 호출. 본문 키를 snake_case→camelCase로 바꿔 보낸다), `usage.py`(토큰 사용량 집계)
 - `tests/`: `backend_client`, `settings_contract`, `usage` 단위 테스트
 - `requirements.txt`: Python 의존성
 
