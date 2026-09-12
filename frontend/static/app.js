@@ -1,9 +1,16 @@
 // 인증은 로그인 세션 쿠키로 한다. 공유 API 키는 없앴다.
 const _fetch=window.fetch.bind(window);
-window.fetch=(u,o={})=>_fetch(u,String(u).startsWith('/api/')?{...o,credentials:'include'}:o).then(r=>{
+// 동작 보기 패널. 이 화면이 보낸 요청, 폴링에서 감지한 상태 변화, 운영 센터에 새로 쌓인 실행을 시간순으로 쌓는다.
+// 같은 줄이 연달아 오면(폴링) 한 줄에 ×n 으로 접는다. 화면 상태일 뿐이라 서버는 모른다.
+const TRACE=[];
+function trace(kind,text,key=text){const last=TRACE[0];if(last&&last.kind===kind&&last.key===key){last.n++;last.t=new Date();last.text=text}else{TRACE.unshift({kind,text,key,t:new Date(),n:1});if(TRACE.length>200)TRACE.length=200}renderTrace()}
+function renderTrace(){const el=document.getElementById('trace-log');if(!el||el.closest('[hidden]'))return;el.innerHTML=TRACE.map(x=>`<li><span class="trace-time">${x.t.toTimeString().slice(0,8)}</span><span class="tag ${x.kind==='AI 실행'?'done':x.kind==='상태'?'wait':''}">${x.kind}</span>${esc(x.text)}${x.n>1?` <i>×${x.n}</i>`:''}</li>`).join('')}
+window.fetch=(u,o={})=>{const t0=performance.now();return _fetch(u,String(u).startsWith('/api/')?{...o,credentials:'include'}:o).then(r=>{
  if(r.status===401&&!String(u).includes('/api/auth/'))showLogin();
+ // 폴링 같은 반복 요청은 ms 만 다르므로 경로·상태로 접는다.
+ if(String(u).startsWith('/api/')){const head=`${o.method||'GET'} ${String(u).replace(/\?.*$/,'')} → ${r.status}`;trace('요청',`${head} · ${Math.round(performance.now()-t0)}ms`,head)}
  return r;
-});
+})};
 // 게이트는 HTML 에서 기본으로 덮여 있다(스크립트가 죽어도 대시보드가 새지 않도록).
 // 세션 쿠키는 HttpOnly 라 읽을 수 없어서, 로그인 때 함께 받는 표시용 쿠키로 즉시 판단한다.
 // 이게 없으면 /api/auth/me 왕복 동안 새로고침마다 로그인 카드가 깜빡인다.
@@ -52,6 +59,7 @@ async function loadAiOperations(){
  const d=await j('/api/ai-operations?'+q);if(d)renderAiOperations(d);
 }
 function renderAiOperations(d){
+ d.items.forEach(x=>{const key=`op|${x.id}`;if(!(key in SEEN)){if(SEEN.opsSeeded)trace('AI 실행',`${x.agent} · ${x.model} · 입력 ${fmtN(x.inputTokens)} / 출력 ${fmtN(x.outputTokens)} · ${usd(x.estimatedCostUsd)} · ${dur(x.durationMs)} · ${x.status}`);SEEN[key]=1}});SEEN.opsSeeded=1;
  const last=Math.max(1,Math.ceil(d.total/d.size));
  // 마지막 페이지에 있다가 이력이 줄면 빈 페이지가 온다. 한 번만 앞 페이지로 물린다.
  if(d.total&&d.page>=last){AI_OPS.page=last-1;return loadAiOperations()}
@@ -73,8 +81,11 @@ $('ai-operation-list').addEventListener('click',e=>{const b=e.target.closest('bu
 // 검토 대기 = 성공했는데 아직 승인·반려 안 한 출력이 하나라도 있는 패키지. 필터는 화면 상태라 서버에 안 묻는다.
 let PACKAGES=[],PKG_FILTER='all';
 const hasPending=p=>p.outputs.some(o=>o.status==='성공'&&o.reviewStatus==='REVIEW_PENDING');
+const SEEN={};
+// 이전에 본 상태와 다르면 기록한다. 처음 본 항목은 기준선만 잡는다(페이지 열 때 과거 이력을 쏟아내지 않도록).
+function noteChange(key,label,status){const old=SEEN[key];SEEN[key]=status;if(old!==undefined&&old!==status)trace('상태',`${label}: ${old} → ${status}`)}
 function renderContentPackages(items){
- if(items)PACKAGES=items;
+ if(items){items.forEach(p=>p.outputs.forEach(o=>noteChange(`pkg|${p.id}|${o.channel}`,`${p.title.slice(0,18)} · ${o.channel}`,o.status+(o.status==='성공'?' · '+(REVIEW_LABEL[o.reviewStatus]||[])[1]:''))));PACKAGES=items}
  const pending=PACKAGES.filter(hasPending);
  $('package-filter').innerHTML=`<button class="light ${PKG_FILTER==='pending'?'active':''}" data-pkg-filter="pending">검토 대기 ${pending.length}건</button><button class="light ${PKG_FILTER==='all'?'active':''}" data-pkg-filter="all">전체 ${PACKAGES.length}건</button>`;
  renderPackageList(PKG_FILTER==='pending'?pending:PACKAGES);
@@ -84,7 +95,7 @@ function renderPackageList(items){renderPaged('content-package-list',items,'cont
 const OUTPUT_NEXT={'블로그':'블로그 발행 큐(검토 대기)에 저장했습니다.'};
 // 패키지 카드가 refId 로 툰·초안을 찾아 컷 이미지 버튼과 Slack 상태를 붙인다. 두 목록을 그릴 때 채운다.
 const TOONS={};
-function cacheToons(items){(items||[]).forEach(x=>TOONS[x.id]=x)}
+function cacheToons(items){(items||[]).forEach(x=>{TOONS[x.id]=x;(x.images||[]).forEach(i=>noteChange(`img|${x.id}|${i.panel_number}`,`${x.title.slice(0,18)} · ${i.panel_number}컷 이미지`,i.status))})}
 const REVIEW_LABEL={REVIEW_PENDING:['wait','검토 대기'],APPROVED:['done','승인'],REJECTED:['late','반려']};
 // 승인·반려 버튼은 주인만 본다(body.demo 에서 숨김). 서버도 데모 세션의 PATCH 를 403 으로 막는다.
 function reviewTag(o){const [cls,label]=REVIEW_LABEL[o.reviewStatus]||REVIEW_LABEL.REVIEW_PENDING;return `<span class="tag ${cls}">${label}</span>`}
@@ -145,6 +156,8 @@ function load(){
 }
 async function newsRead(id){await fetch(`/api/ai-news/${id}/read`,{method:'PATCH'}).then(r=>r.json()).then(renderNews)}
 $('refresh').onclick=load;
+const toggleTrace=open=>{$('trace').hidden=!open;document.body.classList.toggle('trace-open',open);if(open)renderTrace()};
+$('trace-toggle').onclick=()=>toggleTrace($('trace').hidden);$('trace-close').onclick=()=>toggleTrace(false);
 $('news-list').addEventListener('click',e=>{const a=e.target.closest('a[data-news-id]');if(a)newsRead(a.dataset.newsId)});
 $('news-refresh').onclick=async()=>{const b=$('news-refresh');b.disabled=true;b.textContent='수집 중…';try{if(pageState['news-list'])pageState['news-list'].page=0;renderNews(await fetch('/api/ai-news/refresh',{method:'POST'}).then(r=>r.json()))}finally{b.disabled=false;b.textContent='소식 가져오기'}};
 $('briefing-refresh').onclick=async()=>{const b=$('briefing-refresh');b.disabled=true;b.textContent='요약 중…';try{const r=await fetch('/api/ai-news/briefing/refresh',{method:'POST'});if(!r.ok){const error=await r.json();throw new Error(error.detail||'요약 생성에 실패했습니다.')}renderBriefing(await r.json())}catch(error){alert(error.message)}finally{b.disabled=false;b.textContent='핵심 3건 요약';await loadAiOperations()}};
