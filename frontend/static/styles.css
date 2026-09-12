@@ -234,6 +234,8 @@ textarea{min-height:110px;resize:vertical;line-height:1.55}
 /* 동작 보기 패널: 오른쪽 고정, 열리면 main 이 그만큼 좁아진다 */
 .header-actions{display:flex;gap:8px}
 .trace{position:fixed;inset:0 0 0 auto;width:400px;background:var(--surface);border-left:1px solid var(--rule-strong);padding:22px 20px 32px;overflow-y:auto;z-index:5;font-size:12px}
+/* aside{display:flex} 가 hidden 의 display:none 을 이겨 닫기가 안 먹었다. */
+.trace[hidden]{display:none}
 .trace-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
 .trace-head b{font-size:15px}
 .trace-flow{margin:0;padding-left:18px;line-height:1.6;color:var(--ink)}
