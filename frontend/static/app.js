@@ -70,7 +70,17 @@ function renderAiOperations(d){
 }
 $('ai-operation-list').addEventListener('click',e=>{const b=e.target.closest('button[data-ai-step]');if(!b)return;AI_OPS.page+=Number(b.dataset.aiStep);loadAiOperations()});
 ['ai-filter-agent','ai-filter-model','ai-filter-range'].forEach(id=>$(id).onchange=()=>{AI_OPS.page=0;loadAiOperations()});
-function renderContentPackages(items){renderPaged('content-package-list',items,'content-package-list','아직 생성된 콘텐츠 패키지가 없습니다.',item=>`<article class="content-package" id="content-package-${esc(item.id)}"><b>${esc(item.title)}</b><p>${esc(item.tone)} · ${esc(item.target)} · ${esc(item.createdAt.replace('T',' ').slice(0,16))}${item.slackStatus?` · <span class="tag ${item.slackStatus==='SENT'?'done':'late'}">${esc(SLACK_LABEL[item.slackStatus]||item.slackStatus)}</span>`:''}${item.slackStatus&&item.slackStatus!=='SENT'?` <button class="light" data-package-notify="${esc(item.id)}">Slack 알림 재시도</button>`:''}</p><div class="content-output-grid">${item.outputs.map(output=>output.status==='생성중'?`<details><summary>${esc(output.channel)} · 생성 중…</summary></details>`:output.status==='실패'?`<details><summary>${esc(output.channel)} · 실패</summary><p class="muted">${esc(output.error||'생성에 실패했습니다.')}</p></details>`:`<details><summary>${esc(output.channel)} · ${esc(output.title)} ${reviewTag(output)}</summary>${reviewBar(item,output)}${output.refId?`<p class="muted">${esc(OUTPUT_NEXT[output.channel]||'')}</p>`:''}<pre>${esc(output.body)}</pre>${outputExtra(output)}</details>`).join('')}</div>${item.slackError?`<p class="slack-error">${esc(item.slackError)}</p>`:''}</article>`);focusHash('content-package-','content-package-list')}
+// 검토 대기 = 성공했는데 아직 승인·반려 안 한 출력이 하나라도 있는 패키지. 필터는 화면 상태라 서버에 안 묻는다.
+let PACKAGES=[],PKG_FILTER='all';
+const hasPending=p=>p.outputs.some(o=>o.status==='성공'&&o.reviewStatus==='REVIEW_PENDING');
+function renderContentPackages(items){
+ if(items)PACKAGES=items;
+ const pending=PACKAGES.filter(hasPending);
+ $('package-filter').innerHTML=`<button class="light ${PKG_FILTER==='pending'?'active':''}" data-pkg-filter="pending">검토 대기 ${pending.length}건</button><button class="light ${PKG_FILTER==='all'?'active':''}" data-pkg-filter="all">전체 ${PACKAGES.length}건</button>`;
+ renderPackageList(PKG_FILTER==='pending'?pending:PACKAGES);
+}
+document.addEventListener('click',e=>{const b=e.target.closest('button[data-pkg-filter]');if(!b)return;PKG_FILTER=b.dataset.pkgFilter;if(pageState['content-package-list'])pageState['content-package-list'].page=0;renderContentPackages()});
+function renderPackageList(items){renderPaged('content-package-list',items,'content-package-list',PKG_FILTER==='pending'?'검토 대기 중인 콘텐츠가 없습니다.':'아직 생성된 콘텐츠 패키지가 없습니다.',item=>`<article class="content-package" id="content-package-${esc(item.id)}"><b>${esc(item.title)}</b><p>${esc(item.tone)} · ${esc(item.target)} · ${esc(item.createdAt.replace('T',' ').slice(0,16))}${item.slackStatus?` · <span class="tag ${item.slackStatus==='SENT'?'done':'late'}">${esc(SLACK_LABEL[item.slackStatus]||item.slackStatus)}</span>`:''}${item.slackStatus&&item.slackStatus!=='SENT'?` <button class="light" data-package-notify="${esc(item.id)}">Slack 알림 재시도</button>`:''}</p><div class="content-output-grid">${item.outputs.map(output=>output.status==='생성중'?`<details><summary>${esc(output.channel)} · 생성 중…</summary></details>`:output.status==='실패'?`<details><summary>${esc(output.channel)} · 실패</summary><p class="muted">${esc(output.error||'생성에 실패했습니다.')}</p></details>`:`<details><summary>${esc(output.channel)} · ${esc(output.title)} ${reviewTag(output)}</summary>${reviewBar(item,output)}${output.refId?`<p class="muted">${esc(OUTPUT_NEXT[output.channel]||'')}</p>`:''}<pre>${esc(output.body)}</pre>${outputExtra(output)}</details>`).join('')}</div>${item.slackError?`<p class="slack-error">${esc(item.slackError)}</p>`:''}</article>`);focusHash('content-package-','content-package-list')}
 const OUTPUT_NEXT={'블로그':'블로그 발행 큐(검토 대기)에 저장했습니다.'};
 // 패키지 카드가 refId 로 툰·초안을 찾아 컷 이미지 버튼과 Slack 상태를 붙인다. 두 목록을 그릴 때 채운다.
 const TOONS={};
@@ -79,7 +89,9 @@ const REVIEW_LABEL={REVIEW_PENDING:['wait','검토 대기'],APPROVED:['done','�
 // 승인·반려 버튼은 주인만 본다(body.demo 에서 숨김). 서버도 데모 세션의 PATCH 를 403 으로 막는다.
 function reviewTag(o){const [cls,label]=REVIEW_LABEL[o.reviewStatus]||REVIEW_LABEL.REVIEW_PENDING;return `<span class="tag ${cls}">${label}</span>`}
 // 접힌 상태에서도 제목 옆 태그로 검토 상태가 보이고, 펼치면 대본을 읽기 전에 버튼이 먼저 나온다.
-function reviewBar(pkg,o){if(o.status!=='성공')return '';const btn=(st,text)=>o.reviewStatus===st?'':`<button class="light owner-only" data-review="${esc(pkg.id)}|${esc(o.channel)}|${st}">${text}</button>`;return `<p class="review-bar">${btn('APPROVED','승인')} ${btn('REJECTED','반려')}</p>`}
+function reviewBar(pkg,o){if(o.status!=='성공')return '';const btn=(st,text)=>o.reviewStatus===st?'':`<button class="light owner-only" data-review="${esc(pkg.id)}|${esc(o.channel)}|${st}">${text}</button>`;return `<p class="review-bar">${btn('APPROVED','승인')} ${btn('REJECTED','반려')} <button class="light" data-copy>복사</button></p>`}
+// 대본 본문만 클립보드로. 이스케이프된 HTML 이 아니라 그려진 텍스트를 읽어 원문 그대로 복사한다.
+document.addEventListener('click',async e=>{const b=e.target.closest('button[data-copy]');if(!b)return;const text=b.closest('details')?.querySelector('pre')?.textContent||'';try{await navigator.clipboard.writeText(text);b.textContent='복사됨';setTimeout(()=>b.textContent='복사',1500)}catch{alert('클립보드에 복사하지 못했습니다. 브라우저 권한을 확인하세요.')}});
 function outputExtra(o){
  if(o.channel==='인스타툰'&&TOONS[o.refId]){const t=TOONS[o.refId];return `<p class="meta">${toonImageButton(t)}</p>${t.panels.map(p=>panelImage(t,p)).join('')}`}
  return ''
