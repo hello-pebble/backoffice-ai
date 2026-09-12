@@ -1,7 +1,6 @@
 package com.backoffice.dashboard.content
 
 import com.backoffice.dashboard.*
-import com.backoffice.dashboard.automation.*
 import com.backoffice.dashboard.operations.*
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.stereotype.Service
@@ -12,23 +11,19 @@ import java.util.UUID
 import kotlin.math.exp
 
 /**
- * RSS 소식에서 우선순위가 가장 높은 주제 하나를 골라 숏폼 검토 대본 초안을 만든다.
- * RSS 에는 조회수·좋아요 같은 인기 지표가 없으므로 "최신성 + 카테고리 관련성" 우선순위로만 고른다.
- * Slack 에는 대본 전문이 아니라 알림과 검토 링크만 보내고, 전송이 실패해도 초안 저장은 성공한다.
+ * 대본 생성(패키지)의 쇼츠 채널 에이전트. 원본 텍스트로 45~60초 숏폼 검토 대본을 만든다.
+ * 소식·키워드 중 우선순위 주제를 고르는 nextCandidate 도 여기 있다("최신성 + 카테고리 관련성").
+ * Slack·검토 링크는 패키지가 맡는다. 여기서는 보내지 않는다.
  */
 @Service
 class TopicDraftService(
-    private val properties: OfficeProperties,
     private val aiNewsService: AiNewsService,
     private val automationRepository: AutomationRepository,
     private val objectMapper: ObjectMapper,
     private val aiOperationsService: AiOperationsService,
     private val documents: JsonDocumentStore,
     private val llm: LlmClient,
-    private val slack: SlackService,
 ) {
-
-    fun list(): List<TopicDraft> = load().sortedByDescending { it.createdAt }
 
     /**
      * 소식·키워드 중 우선순위가 가장 높은 주제 1건. 대본 생성 화면이 원본을 채울 때 쓴다.
@@ -44,55 +39,12 @@ class TopicDraftService(
         return listOfNotNull(newsCandidate, keyword?.let { DraftSource.fromKeyword(it) }).maxByOrNull { it.priorityScore }
     }
 
-    @Synchronized
-    fun refresh(): TopicDraft {
-        val startedAt = System.nanoTime()
-        val target = llm.target()
-        val now = OffsetDateTime.now()
-        val candidate = nextCandidate()
-            ?: throw IllegalArgumentException("초안으로 만들 새 주제가 없습니다. 소식원이나 키워드가 갱신된 뒤 다시 시도하세요.")
-        val (usage, script) = try {
-            generate(candidate)
-        } catch (error: Exception) {
-            val reason = LlmClient.reasonOf(error)
-            aiOperationsService.record(
-                agent = "주제 대본 초안 에이전트",
-                provider = target.vendor,
-                model = target.model,
-                tools = listOf(candidate.toolLabel, llm.toolLabel(target)),
-                durationMs = (System.nanoTime() - startedAt) / 1_000_000,
-                status = "실패",
-                error = "${target.endpoint} → $reason",
-            )
-            // 자리표시자 대본은 저장하지 않는다. 검토자가 진짜 초안으로 오해한다.
-            if (error is IllegalArgumentException) throw error
-            throw IllegalStateException("대본 초안 생성에 실패했습니다 (${target.endpoint}): $reason", error)
-        }
-        val draft = persist(candidate, script, target.model, now)
-        // 같은 키워드로 두 번 대본을 만들지 않도록, 성공했을 때만 사용 처리한다.
-        if (candidate.keyword != null) {
-            automationRepository.saveKeyword(SaveKeywordRequest(id = candidate.keyword.id, used = true, priority = candidate.keyword.priority))
-        }
-        aiOperationsService.record(
-            agent = "주제 대본 초안 에이전트",
-            provider = target.vendor,
-            model = target.model,
-            tools = listOf(candidate.toolLabel, llm.toolLabel(target), "Slack 알림 · ${draft.slackStatus}"),
-            durationMs = (System.nanoTime() - startedAt) / 1_000_000,
-            inputTokens = usage.inputTokens,
-            outputTokens = usage.outputTokens,
-            estimatedCostUsd = usage.costUsd,
-            resultPreview = "${draft.title} · 검토 대기 초안을 저장했습니다.",
-        )
-        return draft
-    }
-
     /**
-     * 콘텐츠 스튜디오가 원본 텍스트로 쇼츠 대본을 만들 때 쓴다. 저장·Slack·기록은 refresh 와 같다.
+     * 원본 텍스트로 쇼츠 대본을 만들어 검토 대기로 저장한다.
      * sourceId 는 원본이 소식·키워드에서 왔을 때 그 id 다. 남겨 둬야 nextCandidate 가 같은 주제를 다시 고르지 않는다.
      */
     @Synchronized
-    fun draftFromText(title: String, source: String, sourceId: String? = null, notify: Boolean = true): TopicDraft {
+    fun draftFromText(title: String, source: String, sourceId: String? = null): TopicDraft {
         val startedAt = System.nanoTime()
         val target = llm.target()
         val candidate = DraftSource.fromText(title, source, sourceId)
@@ -107,10 +59,10 @@ class TopicDraftService(
             )
             throw IllegalStateException("대본 초안 생성에 실패했습니다 (${target.endpoint}): $reason", error)
         }
-        val draft = persist(candidate, script, target.model, OffsetDateTime.now(), notify)
+        val draft = persist(candidate, script, target.model, OffsetDateTime.now())
         aiOperationsService.record(
             agent = "주제 대본 초안 에이전트", provider = target.vendor, model = target.model,
-            tools = listOf(candidate.toolLabel, llm.toolLabel(target), "Slack 알림 · ${draft.slackStatus}"),
+            tools = listOf(candidate.toolLabel, llm.toolLabel(target)),
             durationMs = (System.nanoTime() - startedAt) / 1_000_000,
             inputTokens = usage.inputTokens, outputTokens = usage.outputTokens, estimatedCostUsd = usage.costUsd,
             resultPreview = "${draft.title} · 검토 대기 초안을 저장했습니다.",
@@ -118,23 +70,8 @@ class TopicDraftService(
         return draft
     }
 
-    /** Slack 이 미설정이었거나 실패한 초안의 알림만 다시 보낸다. 대본은 그대로 둔다. */
-    @Synchronized
-    fun notify(id: String): TopicDraft {
-        val drafts = load()
-        val draft = drafts.firstOrNull { it.id == id } ?: throw IllegalArgumentException("초안을 찾을 수 없습니다.")
-        require(draft.slackStatus != "SENT") { "이미 Slack 알림을 보낸 초안입니다." }
-        val (status, error) = sendSlack(draft)
-        val updated = draft.copy(slackStatus = status, slackError = error)
-        save(drafts.map { if (it.id == id) updated else it })
-        return updated
-    }
-
-    /**
-     * 초안 저장은 Slack 결과와 무관하게 성공한다. 알림 상태만 함께 기록해 둔다.
-     * notify=false 는 대본 생성(패키지)이 부를 때다. 패키지가 채널을 묶어 한 번만 알리므로 초안이 따로 보내면 두 번 온다.
-     */
-    internal fun persist(candidate: DraftSource, script: TopicScript, model: String, now: OffsetDateTime, notify: Boolean = true): TopicDraft {
+    /** 검토 대기로 저장한다. slackStatus·reviewUrl 은 옛 문서와 모양을 맞추려고 남긴 필드다(패키지가 알림을 보낸다). */
+    internal fun persist(candidate: DraftSource, script: TopicScript, model: String, now: OffsetDateTime): TopicDraft {
         val id = UUID.randomUUID().toString()
         val draft = TopicDraft(
             id = id,
@@ -149,23 +86,15 @@ class TopicDraftService(
             script = script.script,
             hashtags = script.hashtags,
             reviewStatus = "REVIEW_PENDING",
-            slackStatus = "NOT_CONFIGURED",
+            slackStatus = "SKIPPED",
             slackError = null,
-            reviewUrl = reviewUrl(id),
+            reviewUrl = "",
             model = model,
             createdAt = now.toString(),
         )
-        val (status, error) = if (notify) sendSlack(draft) else "SKIPPED" to null
-        val saved = draft.copy(slackStatus = status, slackError = error)
-        save((listOf(saved) + load()).take(50))
-        return saved
+        save((listOf(draft) + load()).take(50))
+        return draft
     }
-
-    // 대본 전문은 보내지 않는다. 알림 문구와 검토 링크만 보낸다.
-    private fun sendSlack(draft: TopicDraft): Pair<String, String?> =
-        slack.notify("새 검토 대본 초안이 준비됨: ${draft.title}\n검토 링크: ${draft.reviewUrl}")
-
-    private fun reviewUrl(id: String): String = "${properties.slack.reviewBaseUrl.trim().trimEnd('/')}/#topic-draft-$id"
 
     private fun generate(source: DraftSource): Pair<LlmResponse, TopicScript> {
         val prompt = """다음 내용 하나를 소개하는 한국어 숏폼 검토 대본을 작성하세요.

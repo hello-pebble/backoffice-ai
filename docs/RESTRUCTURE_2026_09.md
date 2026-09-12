@@ -24,7 +24,7 @@
 | 패키지 | 들어간 것 | URL |
 |---|---|---|
 | auth | Google 로그인, 세션·워커 필터, Gmail 토큰 | `/api/auth/*` |
-| content | 인스타툰 대본·이미지, 콘텐츠 패키지, 주제 초안, AI 뉴스·브리핑 | `/api/instagram-toons`, `/api/ai-news`, `/api/topic-drafts`, `/api/content-packages`, `/api/worker/morning-prep` |
+| content | 콘텐츠 패키지(대본 생성·검토·Slack), 툰 목록·컷 이미지, 주제 후보, AI 뉴스·브리핑 | `/api/content-packages*`, `/api/instagram-toons`(GET), `/api/toon-images`, `/api/topic-candidates/next`, `/api/ai-news*`, `/api/worker/morning-prep` |
 | operations | 대시보드, 업무·승인, AI 운영 센터 조회, 워커 수신, health | `/api/operations`, `/api/tasks`, `/api/ai-operations`, `/api/worker/*` |
 | automation | Python 자동화 실행, Slack 연결 | `/api/automation/*`, `/api/slack/*` |
 

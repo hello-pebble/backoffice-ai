@@ -66,7 +66,7 @@ class ContentStudioServiceTest {
     @Test
     fun `체크된 채널만 각자의 에이전트로 만들고 저장한다`() {
         `when`(toons.generate(anyArg())).thenReturn(toon())
-        `when`(drafts.draftFromText(anyString(), anyString(), anyArg(), anyBoolean())).thenReturn(draft())
+        `when`(drafts.draftFromText(anyString(), anyString(), anyArg())).thenReturn(draft())
 
         val result = service.create(CreateContentPackageRequest(source = source, channels = listOf("인스타툰", "유튜브 쇼츠", "틱톡")))
 
@@ -96,13 +96,12 @@ class ContentStudioServiceTest {
     fun `컷 수와 원본 id 를 채널 에이전트에 넘기고 성공하면 키워드를 소진한다`() {
         var toonRequest: CreateInstagramToonRequest? = null
         doAnswer { toonRequest = it.getArgument(0); toon() }.`when`(toons).generate(anyArg())
-        `when`(drafts.draftFromText(anyString(), anyString(), anyArg(), anyBoolean())).thenReturn(draft())
+        `when`(drafts.draftFromText(anyString(), anyString(), anyArg())).thenReturn(draft())
 
         service.create(CreateContentPackageRequest(source = source, channels = listOf("인스타툰", "유튜브 쇼츠"), panelCount = 8, sourceId = "news-1", keywordId = 7))
 
         assertEquals(8, toonRequest?.panelCount)
-        // 쇼츠 초안은 따로 Slack 을 보내지 않는다(notify=false). 패키지가 한 번 보낸다.
-        verify(drafts).draftFromText(anyString(), anyString(), org.mockito.ArgumentMatchers.eq("news-1"), org.mockito.ArgumentMatchers.eq(false))
+        verify(drafts).draftFromText(anyString(), anyString(), org.mockito.ArgumentMatchers.eq("news-1"))
         verify(automation).markKeywordUsed(7)
     }
 

@@ -168,7 +168,7 @@ SPRING_FLYWAY_BASELINE_VERSION=0
 
 ### 문제 상황
 
-주제 대본 초안은 만들어지는데 Slack 알림 상태가 `NOT_CONFIGURED` 또는 `FAILED`로 남습니다.
+대본 생성 패키지는 만들어지는데 Slack 알림 상태가 `NOT_CONFIGURED` 또는 `FAILED`로 남습니다.
 
 ### 원인
 

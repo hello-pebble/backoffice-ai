@@ -92,7 +92,9 @@ class SessionAuthFilterTest {
             request("/api/automation/content", method = "POST", session = demoToken),
             request("/api/tasks", method = "POST", session = demoToken),
             request("/api/slack/channels", session = demoToken),
-            request("/api/topic-drafts/abc/notify", method = "POST", session = demoToken),
+            // 전용 생성 라우트는 3단계에서 지웠다. 허용 목록에도 없어야 한다.
+            request("/api/topic-drafts/refresh", method = "POST", session = demoToken),
+            request("/api/instagram-toons", method = "POST", session = demoToken),
             // 데모 방문자는 승인·반려·Slack 재전송을 못 한다.
             request("/api/content-packages/p1/outputs/블로그", method = "PATCH", session = demoToken),
             request("/api/content-packages/p1/notify", method = "POST", session = demoToken),
@@ -115,11 +117,10 @@ class SessionAuthFilterTest {
     @Test
     fun `데모 세션은 허용 목록 경로를 통과하고 그 안에서만 데모로 표시된다`() {
         listOf(
-            request("/api/topic-drafts/refresh", method = "POST", session = demoToken),
+            request("/api/content-packages", method = "POST", session = demoToken),
+            request("/api/topic-candidates/next", session = demoToken),
             request("/api/ai-news/refresh", method = "POST", session = demoToken),
             request("/api/dashboard", session = demoToken),
-            // 인스타툰은 모델만 부르고 문서 저장소에 남긴다(파이썬 프로세스 없음).
-            request("/api/instagram-toons", method = "POST", session = demoToken),
             // 이미지 생성·조회. 통과는 라우팅만이고 실제 격리는 toon_image.owner 가 한다.
             request("/api/instagram-toons/abc/images", method = "POST", session = demoToken),
             request("/api/toon-images/7", session = demoToken),

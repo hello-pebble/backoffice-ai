@@ -54,35 +54,6 @@ class ContentControllerTest {
     }
 
     @Test
-    fun `주제 대본 초안도 같은 규칙으로 상태를 나눈다`() {
-        doThrow(IllegalArgumentException("새 주제가 없습니다.")).`when`(topicDrafts).refresh()
-        assertEquals(HttpStatus.BAD_REQUEST, status { controller.refreshTopicDrafts() })
-
-        doThrow(IllegalStateException("모델 호출 실패")).`when`(topicDrafts).refresh()
-        assertEquals(HttpStatus.BAD_GATEWAY, status { controller.refreshTopicDrafts() })
-    }
-
-    @Test
-    fun `없는 초안에 알림을 다시 보내면 400 이다`() {
-        doThrow(IllegalArgumentException("초안을 찾을 수 없습니다.")).`when`(topicDrafts).notify("없는-id")
-
-        val error = assertFailsWith<ResponseStatusException> { controller.notifyTopicDraft("없는-id") }
-
-        assertEquals(HttpStatus.BAD_REQUEST, error.statusCode)
-        assertEquals("초안을 찾을 수 없습니다.", error.reason)
-    }
-
-    @Test
-    fun `인스타툰은 입력 문제면 400, 워커 문제면 502 다`() {
-        val request = CreateInstagramToonRequest(episode = "충분히 긴 에피소드 설명")
-        doThrow(IllegalArgumentException("컷 수는 4 또는 8만 가능합니다.")).`when`(toons).generate(request)
-        assertEquals(HttpStatus.BAD_REQUEST, status { controller.createInstagramToon(request) })
-
-        doThrow(IllegalStateException("대본 생성 시간 초과")).`when`(toons).generate(request)
-        assertEquals(HttpStatus.BAD_GATEWAY, status { controller.createInstagramToon(request) })
-    }
-
-    @Test
     fun `콘텐츠 패키지 입력 오류는 400 이다`() {
         val request = CreateContentPackageRequest(source = "짧다")
         doThrow(IllegalArgumentException("원본 콘텐츠를 20자 이상 입력하세요.")).`when`(contentStudio).create(request)
@@ -105,14 +76,30 @@ class ContentControllerTest {
     @Test
     fun `아침 사전 준비는 한 단계가 실패해도 다음 단계를 돌리고 단계별 결과를 돌려준다`() {
         doThrow(IllegalStateException("RSS 연결 실패")).`when`(news).refresh()
-        doThrow(IllegalArgumentException("새 주제가 없습니다.")).`when`(topicDrafts).refresh()
+        org.mockito.Mockito.`when`(topicDrafts.nextCandidate()).thenReturn(null)
 
         val result = controller.morningPrep()
 
-        assertEquals(listOf("news", "briefing", "topicDraft"), result.keys.toList())
+        assertEquals(listOf("news", "briefing", "package"), result.keys.toList())
         assertEquals("실패: RSS 연결 실패", result["news"])
         assertEquals("성공", result["briefing"])
-        assertEquals("실패: 새 주제가 없습니다.", result["topicDraft"])
+        assertEquals("실패: 초안으로 만들 새 주제가 없습니다.", result["package"])
         verify(briefing).refresh()
     }
+
+    @Test
+    fun `아침 사전 준비는 우선순위 주제로 쇼츠 패키지를 만든다`() {
+        val candidate = DraftSource.fromText("아침 주제", "아침에 커피를 마시며 할 일을 정리하는 습관 이야기", "news-1")
+        org.mockito.Mockito.`when`(topicDrafts.nextCandidate()).thenReturn(candidate)
+        var request: CreateContentPackageRequest? = null
+        org.mockito.Mockito.doAnswer { request = it.getArgument(0); ContentPackage("p1", "t", "s", "톤", "대상", "2026-09-12T06:30:00+09:00", emptyList()) }
+            .`when`(contentStudio).create(anyArg())
+
+        assertEquals("성공", controller.morningPrep()["package"])
+        assertEquals(listOf("유튜브 쇼츠"), request?.channels)
+        assertEquals("news-1", request?.sourceId)
+    }
 }
+
+@Suppress("UNCHECKED_CAST")
+private fun <T> anyArg(): T = org.mockito.ArgumentMatchers.any()
