@@ -114,6 +114,16 @@
                 <a class="text-link" href="https://mail.google.com" target="_blank" rel="noreferrer">Gmail에서 열기</a>
             </section>
 
+            <section id="slack" class="card">
+                <div class="heading">
+                    <h2>Slack 연결</h2>
+                    <button class="light" id="slack-connect">Slack 연결</button>
+                </div>
+                <p class="muted">검토 대본 초안이 준비되면 대본 전문이 아니라 알림과 검토 링크만 이 채널로 보냅니다.</p>
+                <p class="demo-note">Slack은 개인 워크스페이스 로그인이 필요해 데모에서는 연결할 수 없습니다.</p>
+                <div id="slack-status" class="empty">Slack 연결 상태를 확인하는 중입니다.</div>
+            </section>
+
             <section id="ai-news" class="card">
                 <div class="heading">
                     <h2>최신 소식</h2>
@@ -135,15 +145,6 @@
                 <a class="text-link" href="https://developers.tossinvest.com/docs" target="_blank" rel="noreferrer">토스증권 API 설정 안내</a>
             </section>
 
-            <section id="slack" class="card">
-                <div class="heading">
-                    <h2>Slack 연결</h2>
-                    <button class="light" id="slack-connect">Slack 연결</button>
-                </div>
-                <p class="muted">검토 대본 초안이 준비되면 대본 전문이 아니라 알림과 검토 링크만 이 채널로 보냅니다.</p>
-                <p class="demo-note">Slack은 개인 워크스페이스 로그인이 필요해 데모에서는 연결할 수 없습니다.</p>
-                <div id="slack-status" class="empty">Slack 연결 상태를 확인하는 중입니다.</div>
-            </section>
         </main>
         <script>document.getElementById('today').textContent=new Intl.DateTimeFormat('ko-KR',{dateStyle:'full'}).format(new Date())</script>
         <script src="/app.js"></script>
