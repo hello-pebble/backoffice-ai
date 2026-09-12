@@ -10,6 +10,7 @@ Kotlin/Spring Boot 웹 서버입니다. 화면이 쓰는 모든 API를 제공하
 - **최신 소식**: 공식 RSS/Atom 수집과 핵심 3건 요약(LLM).
 - **대본 생성**: 원본 하나(직접 입력 또는 "소식·키워드에서 주제 가져오기" — `TopicDraftService.nextCandidate`, 키워드는 생성 성공 시 소진)로 체크한 채널마다 그 채널의 에이전트를 순차 실행합니다. 쇼츠는 `TopicDraftService`(45~60초 대본), 인스타툰은 `InstagramToonService`(4·8컷 대본, 컷 이미지는 `ToonImageService`가 Google Imagen 으로 백그라운드 생성), 블로그는 `automation_content`에 검토 대기로, 카드뉴스는 모델을 한 번 부릅니다. 주제 초안·인스타툰 전용 화면과 라우트는 2026-09-12에 이 화면으로 통합돼 삭제됐습니다. 요청은 모든 채널을 `생성중`으로 저장하고 바로 202로 끝나며, 백그라운드 스레드가 채널을 하나씩 채웁니다(화면은 목록 API 폴링). 한 채널이 실패해도 나머지는 계속 돌고, 재시작으로 끊긴 `생성중`은 실패로만 표시합니다.
 - **검토·승인**: 패키지 출력마다 검토 대기·승인·반려. 승인이 실제로 바꾸는 것은 블로그뿐(`automation_content.status=approved`, 워커는 approved 만 발행). Slack 알림은 패키지당 1건, 재전송 버튼. 데모 세션은 승인·재전송 라우트가 403.
+- **동작 보기 패널**: 헤더 버튼으로 여는 오른쪽 패널. 화면이 보낸 API 요청(상태·소요 시간), 폴링에서 감지한 채널·컷 이미지 상태 변화, 운영 센터에 새로 쌓인 AI 실행(모델·토큰·비용)을 최신순으로 보여 줍니다. 서버 변경 없이 화면이 받는 응답을 관찰만 합니다.
 - **아침 사전 준비**: 워커 크론(`MORNING_PREP_TIME`)이 `POST /api/worker/morning-prep`를 불러 소식 수집 → 핵심 3건 요약 → 우선순위 주제로 쇼츠 패키지 1건을 순서대로 만들어 둡니다. 한 단계가 실패해도 다음 단계는 돕니다.
 - **외부 정보**: Gmail 읽기 전용 요약과 토스증권 국내 관심 종목 현재가.
 - **데모 모드**: 로그인 없이 둘러보는 모드. 아래 별도 절 참고.
@@ -26,7 +27,7 @@ Kotlin/Spring Boot 웹 서버입니다. 화면이 쓰는 모든 API를 제공하
 - `content/`: `ContentController` 아래 `ContentStudioService`(채널 오케스트레이터), `TopicDraftService`, `InstagramToonService`, `ToonImageService`·`ToonImageRepository`, `AiNewsService`, `AiNewsBriefingService`
 - `operations/`: `OperationsController` 아래 `OperationsService`, `GmailService`, `TossService`, `AutomationRepository`(키워드·콘텐츠 큐)
 - `automation/`: `AutomationController` 아래 `PythonAutomationService`(워커 HTTP 위임), `SlackService`
-- `src/main/resources/db/migration/`: Flyway 마이그레이션 V1~V9 (스키마 생성 → task → feature 테이블 → 네이밍·soft-delete 정리 → 컷 이미지 테이블 → 실행 이력 행 전환 → 컷 attempts)
+- `src/main/resources/db/migration/`: Flyway 마이그레이션 V1~V10 (스키마 생성 → task → feature 테이블 → 네이밍·soft-delete 정리 → 컷 이미지 테이블 → 실행 이력 행 전환 → 컷 attempts → 활성 키워드 유니크)
 
 Python 자동화 실행은 `PythonAutomationService`가 `automation/worker_api.py`에 HTTP로 위임합니다(로컬에서는 프로세스를 직접 띄웁니다).
 
@@ -63,7 +64,9 @@ Copy-Item config\dashboard.properties.example config\dashboard.properties
 - `SessionAuthFilter`의 허용 목록에 없는 경로는 403입니다. 새 엔드포인트는 데모에 자동으로 닫혀 있습니다.
 
 문서 저장소를 타지 않는 `toon_image`는 `owner` 컬럼으로 가르고, 그 값은 서버가 `DemoContext`로 정합니다.
-비용은 `office.demo.llm-*`·`image-*` 상한으로 막습니다. 인증이 꺼져 있으면(`office.auth.enabled=false`)
+비용은 `office.demo.llm-*`·`image-*` 상한으로 막습니다(기본: 모델 호출 세션 10회·하루 30회, 이미지 세션 4장·하루 8장).
+데모도 "소식·키워드에서 주제 가져오기"로 `automation_keyword`를 **읽을 수는 있지만** 생성이 성공해도 키워드를 소진하지 않습니다.
+승인·반려와 Slack 재전송은 허용 목록 밖이라 403이고 버튼도 숨깁니다. 인증이 꺼져 있으면(`office.auth.enabled=false`)
 격리를 거는 필터 자체가 돌지 않으므로 데모 시작을 거부합니다.
 
 씨앗 데이터는 `src/main/resources/demo/`에 있고 첫 데모 방문 때 들어갑니다.

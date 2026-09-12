@@ -26,13 +26,13 @@
 | # | 화면 | 하는 일 | 구현 | 상태 |
 |---|---|---|---|---|
 | 1 | AI 운영 센터 | 실행 1건=행 1개. 기능·모델·기간 필터, 모델별 토큰·비용 집계, 6개월 보관 | `AiOperationsService`, `ai_operation_run` | 운영 |
-| 2 | 대본 생성 | 원본 1개(직접 입력 또는 "소식·키워드에서 주제 가져오기") → 체크한 채널마다 에이전트 실행. 쇼츠 대본(`TopicDraftService`), 인스타툰 4·8컷 대본 + 컷 이미지 버튼(`InstagramToonService`, `ToonImageService`), 카드뉴스, 블로그 발행 큐. 요청은 202로 끝나고 채널은 백그라운드. 출력마다 검토 대기·승인·반려, 승인은 블로그만 `approved`로. Slack 알림은 패키지당 1건(`#content-package-{id}`). 생성 성공 시 키워드 소진. 2026-09-12 세 섹션을 이걸로 통합 | `ContentStudioService`(오케스트레이터) | 운영 |
+| 2 | 대본 생성 | 원본 1개(직접 입력 또는 "소식·키워드에서 주제 가져오기") → 체크한 채널마다 에이전트 실행. 쇼츠 대본(`TopicDraftService`), 인스타툰 4·8컷 대본 + 컷 이미지 버튼(`InstagramToonService`, `ToonImageService`), 카드뉴스, 블로그 발행 큐. 요청은 202로 끝나고 채널은 백그라운드. 출력마다 검토 대기·승인·반려, 승인은 블로그만 `approved`로. Slack 알림은 패키지당 1건(`#content-package-{id}`). 생성 성공 시 키워드 소진. 검토 대기 필터·대본 복사. "동작 보기" 패널(요청·상태 변화·AI 실행 실시간). 2026-09-12 세 섹션을 이걸로 통합 | `ContentStudioService`(오케스트레이터) | 운영 |
 | 3 | 메일 | Gmail 읽기 전용 요약 | `GmailService` | 운영(주인만) |
 | 4 | 최신 소식 | RSS 수집 + 핵심 3건 요약 | `AiNewsService`, `AiNewsBriefingService` | 운영 |
 | 5 | 국내 관심 종목 | 토스증권 현재가 | `TossService` | 운영(설정 시) |
 | 6 | Slack 연결 | 앱 설치·채널 선택. 알림만, 본문 전송 없음 | `SlackService` | 운영 |
 | 7 | 블로그 자동화 | 키워드 수집 → 글 생성 → 네이버 발행 | Python 워커 | 워커 배포 시. 발행은 기본 꺼짐 |
-| – | 데모 모드 | 로그인 없이 둘러보기. AI는 실제 실행, 개인 연동은 차단, 문서 키·owner로 격리 | `DemoMode`, `SessionAuthFilter` | 운영 |
+| – | 데모 모드 | 로그인 없이 둘러보기. AI는 실제 실행(세션 10회·하루 30회), 키워드는 읽되 소진 안 함, 승인·Slack은 403, 개인 연동은 차단, 문서 키·owner로 격리 | `DemoMode`, `SessionAuthFilter` | 운영 |
 
 ---
 
@@ -41,7 +41,7 @@
 ```text
 Vercel (frontend/static, /api/* rewrite)
   └─ Railway  backend/  Kotlin·Spring, 포트 8765
-        ├─ PostgreSQL 16 (Flyway V1~V9)
+        ├─ PostgreSQL 16 (Flyway V1~V10)
         ├─ LlmClient → OpenAI 호환 chat · Ollama · Google Imagen
         └─ POST /run ─→ Railway  automation/  Python FastAPI 워커
                               └─ 결과는 /api/worker/* 로 백엔드에 저장
@@ -58,9 +58,9 @@ Vercel (frontend/static, /api/* rewrite)
 
 | 항목 | 현재 |
 |---|---|
-| 키워드 수집 | 네이버 검색어 트렌드·데이터랩. 최소 검색량 필터, 중복 제거. `/api/worker/keywords` 저장 |
+| 키워드 수집 | 구글 트렌드 최근 `GOOGLE_TRENDS_HOURS`(기본 168=7일) 인기 검색어(내부 API, 실패 시 당일 RSS). `KEYWORD_INCLUDE`가 검색어·연관어에 있어야 통과, `KEYWORD_EXCLUDE`는 제외. 최소 검색량 필터. `/api/worker/keywords` 저장은 upsert — V10 활성 키워드 유니크로 중복 없음, 재유행해도 `used` 유지. 네이버 트렌드·데이터랩은 TODO |
 | 글 생성 | OpenAI 호환 chat. 제목·본문(최소 길이 설정)·태그. 사용량은 stdout 마커 한 줄로 백엔드에 넘김 |
-| 발행 | Selenium. `NAVER_LOGIN_ENABLED=False` 기본. 재시도 `MAX_RETRY_ATTEMPTS` |
+| 발행 | 대본 생성에서 **승인된 글만**(`status=approved`) 조회해 Selenium 발행. 완료는 상태만 PATCH. `NAVER_LOGIN_ENABLED=False` 기본. 재시도 `MAX_RETRY_ATTEMPTS` |
 | 주기 | `KEYWORD_COLLECTION_TIME` → `CONTENT_GENERATION_TIME` → `POSTING_TIME` |
 | 목표 빈도 | **주 1회**(v1.0 메모의 "일주일 한 번" 반영). 매일 실행은 폐기 |
 
