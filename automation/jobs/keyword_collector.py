@@ -2,13 +2,15 @@
 키워드 수집 모듈
 구글 트렌드 일간 RSS 를 수집한다. 네이버 트렌드·데이터랩은 아직 TODO 라 빈 목록이다.
 """
+import json
 import re
+import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
 from typing import List, Dict, Any
 from config.settings import (
     NAVER_CLIENT_ID, NAVER_CLIENT_SECRET, MIN_SEARCH_VOLUME,
-    GOOGLE_TRENDS_GEO, KEYWORD_INCLUDE, KEYWORD_EXCLUDE,
+    GOOGLE_TRENDS_GEO, GOOGLE_TRENDS_HOURS, KEYWORD_INCLUDE, KEYWORD_EXCLUDE,
 )
 from automation.shared.clock import now_kst
 from automation.shared.logger import logger
@@ -47,6 +49,33 @@ def parse_trends_rss(xml_text: str) -> List[Dict[str, Any]]:
     return items
 
 
+def parse_trending_batch(raw: str) -> List[Dict[str, Any]]:
+    """
+    trends.google.com 의 "실시간 인기 급상승" 내부 API(batchexecute, rpc i0OFE) 응답 → 키워드 목록.
+    공식 API 가 없어 화면이 쓰는 호출을 그대로 흉내 낸다. 응답은 )]}' 접두 + JSON 문자열을 한 번 더 감싼 형태.
+    항목은 [검색어, ?, 지역, [시작 시각], ?, ?, 검색량, ?, ?, [연관 검색어], [카테고리 id], [기사 id], 검색어].
+    ponytail: 위치 기반 파싱이라 구글이 배열을 바꾸면 깨진다. 그때는 RSS 폴백이 받는다.
+    """
+    m = re.search(r'"i0OFE","(.*?)",null,null,null,"generic"', raw, re.S)
+    if not m:
+        return []
+    inner = json.loads(json.loads('"' + m.group(1) + '"'))
+    items = []
+    for it in inner[1] or []:
+        keyword = (it[0] or "").strip()
+        if not keyword:
+            continue
+        related = [r for r in (it[9] or []) if r and r != keyword]
+        items.append({
+            "keyword": keyword,
+            "searchVolume": int(it[6] or 0),
+            "category": "구글 트렌드",
+            "priority": TRENDS_PRIORITY,
+            "context": " ".join(related),
+        })
+    return items
+
+
 def matches_topic(kw: Dict[str, Any], include=None, exclude=None) -> bool:
     """키워드 + 관련 뉴스 제목에 포함어가 하나라도 있고 제외어는 없어야 통과. 포함어가 비면 전부 통과."""
     include = KEYWORD_INCLUDE if include is None else include
@@ -67,12 +96,26 @@ class KeywordCollector:
         self.naver_client_secret = NAVER_CLIENT_SECRET
 
     def collect_google_trends(self) -> List[Dict[str, Any]]:
-        """구글 트렌드 일간 RSS. 공식 API 가 없어 RSS 가 유일한 무료·안정 경로다."""
-        url = f"https://trends.google.com/trending/rss?geo={GOOGLE_TRENDS_GEO}"
+        """최근 GOOGLE_TRENDS_HOURS 시간의 인기 검색어. 내부 API 가 깨지면 당일 RSS 로 물러선다."""
         try:
-            with urllib.request.urlopen(url, timeout=20) as response:
+            payload = json.dumps([[["i0OFE", json.dumps([None, None, GOOGLE_TRENDS_GEO, 0, "ko", GOOGLE_TRENDS_HOURS, 1]), None, "generic"]]])
+            request = urllib.request.Request(
+                "https://trends.google.com/_/TrendsUi/data/batchexecute?rpcids=i0OFE&hl=ko",
+                data=urllib.parse.urlencode({"f.req": payload}).encode("utf-8"),
+                headers={"User-Agent": "Mozilla/5.0", "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8"},
+            )
+            with urllib.request.urlopen(request, timeout=20) as response:
+                items = parse_trending_batch(response.read().decode("utf-8"))
+            if items:
+                logger.info(f"구글 트렌드 수집: {len(items)}개 ({GOOGLE_TRENDS_GEO}, 최근 {GOOGLE_TRENDS_HOURS}시간)")
+                return items
+            logger.warning("구글 트렌드 내부 API 응답을 읽지 못했습니다. 당일 RSS 로 대체합니다.")
+        except Exception as e:
+            logger.warning(f"구글 트렌드 내부 API 실패, 당일 RSS 로 대체: {e}")
+        try:
+            with urllib.request.urlopen(f"https://trends.google.com/trending/rss?geo={GOOGLE_TRENDS_GEO}", timeout=20) as response:
                 items = parse_trends_rss(response.read().decode("utf-8"))
-            logger.info(f"구글 트렌드 수집: {len(items)}개 ({GOOGLE_TRENDS_GEO})")
+            logger.info(f"구글 트렌드 RSS 수집: {len(items)}개 (당일)")
             return items
         except Exception as e:
             logger.error(f"구글 트렌드 수집 실패: {e}")
