@@ -112,11 +112,8 @@ class InstagramToonService(
         - hashtags 는 8~12개입니다.
     """.trimIndent()
 
-    /** 모델이 앞뒤에 설명을 붙이는 경우가 있어 첫 중괄호 블록만 다시 시도한다. TopicDraftService 와 같은 규칙이다. */
     private fun parse(content: String, panelCount: Int): ToonScript {
-        val node = runCatching { objectMapper.readTree(content) }
-            .recoverCatching { objectMapper.readTree("{" + content.substringAfter('{', "").substringBeforeLast('}', "") + "}") }
-            .getOrElse { throw IllegalStateException("모델이 JSON 형식을 만들지 못했습니다. 더 큰 모델을 쓰거나 다시 시도하세요.") }
+        val node = LlmClient.jsonOf(objectMapper, content)
         val panels = node.path("panels").mapIndexed { index, panel ->
             InstagramToonPanel(
                 number = panel.path("number").asInt(index + 1),

@@ -52,6 +52,7 @@ LOG_FILE = LOGS_DIR / 'backoffice.log'
 KEYWORD_COLLECTION_TIME = os.getenv('KEYWORD_COLLECTION_TIME', '09:00')
 CONTENT_GENERATION_TIME = os.getenv('CONTENT_GENERATION_TIME', '09:30')
 POSTING_TIME = os.getenv('POSTING_TIME', '10:00')
+MORNING_PREP_TIME = os.getenv('MORNING_PREP_TIME', '06:30')  # 아침 점검 전 소식·요약·초안 사전 준비
 
 # 콘텐츠 생성 설정
 MIN_CONTENT_LENGTH = int(os.getenv('MIN_CONTENT_LENGTH', '1500'))

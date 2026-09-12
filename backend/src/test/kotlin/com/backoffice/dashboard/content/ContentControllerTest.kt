@@ -3,6 +3,7 @@ package com.backoffice.dashboard.content
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito.doThrow
 import org.mockito.Mockito.mock
+import org.mockito.Mockito.verify
 import org.springframework.http.HttpStatus
 import org.springframework.web.server.ResponseStatusException
 import kotlin.test.assertEquals
@@ -19,11 +20,12 @@ class ContentControllerTest {
     private val topicDrafts = mock(TopicDraftService::class.java)
     private val toons = mock(InstagramToonService::class.java)
     private val contentStudio = mock(ContentStudioService::class.java)
+    private val news = mock(AiNewsService::class.java)
 
     private val controller = ContentController(
         instagramToonService = toons,
         toonImageService = mock(ToonImageService::class.java),
-        aiNewsService = mock(AiNewsService::class.java),
+        aiNewsService = news,
         aiNewsBriefingService = briefing,
         contentStudioService = contentStudio,
         topicDraftService = topicDrafts,
@@ -86,5 +88,19 @@ class ContentControllerTest {
         doThrow(IllegalArgumentException("원본 콘텐츠를 20자 이상 입력하세요.")).`when`(contentStudio).create(request)
 
         assertEquals(HttpStatus.BAD_REQUEST, status { controller.createContentPackage(request) })
+    }
+
+    @Test
+    fun `아침 사전 준비는 한 단계가 실패해도 다음 단계를 돌리고 단계별 결과를 돌려준다`() {
+        doThrow(IllegalStateException("RSS 연결 실패")).`when`(news).refresh()
+        doThrow(IllegalArgumentException("새 주제가 없습니다.")).`when`(topicDrafts).refresh()
+
+        val result = controller.morningPrep()
+
+        assertEquals(listOf("news", "briefing", "topicDraft"), result.keys.toList())
+        assertEquals("실패: RSS 연결 실패", result["news"])
+        assertEquals("성공", result["briefing"])
+        assertEquals("실패: 새 주제가 없습니다.", result["topicDraft"])
+        verify(briefing).refresh()
     }
 }

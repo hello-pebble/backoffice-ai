@@ -70,7 +70,8 @@ function renderAiOperations(d){
 }
 $('ai-operation-list').addEventListener('click',e=>{const b=e.target.closest('button[data-ai-step]');if(!b)return;AI_OPS.page+=Number(b.dataset.aiStep);loadAiOperations()});
 ['ai-filter-agent','ai-filter-model','ai-filter-range'].forEach(id=>$(id).onchange=()=>{AI_OPS.page=0;loadAiOperations()});
-function renderContentPackages(items){renderPaged('content-package-list',items,'content-package-list','아직 생성된 콘텐츠 패키지가 없습니다.',item=>`<article class="content-package"><b>${esc(item.title)}</b><p>${esc(item.tone)} · ${esc(item.target)} · ${esc(item.createdAt.replace('T',' ').slice(0,16))}</p><div class="content-output-grid">${item.outputs.map(output=>`<details><summary>${esc(output.channel)} · ${esc(output.title)}</summary><pre>${esc(output.body)}</pre></details>`).join('')}</div></article>`)}
+function renderContentPackages(items){renderPaged('content-package-list',items,'content-package-list','아직 생성된 콘텐츠 패키지가 없습니다.',item=>`<article class="content-package"><b>${esc(item.title)}</b><p>${esc(item.tone)} · ${esc(item.target)} · ${esc(item.createdAt.replace('T',' ').slice(0,16))}</p><div class="content-output-grid">${item.outputs.map(output=>output.status==='생성중'?`<details><summary>${esc(output.channel)} · 생성 중…</summary></details>`:output.status==='실패'?`<details><summary>${esc(output.channel)} · 실패</summary><p class="muted">${esc(output.error||'생성에 실패했습니다.')}</p></details>`:`<details><summary>${esc(output.channel)} · ${esc(output.title)}</summary>${output.refId?`<p class="muted">${esc(OUTPUT_NEXT[output.channel]||'')}</p>`:''}<pre>${esc(output.body)}</pre></details>`).join('')}</div></article>`)}
+const OUTPUT_NEXT={'인스타툰':'인스타툰 대본 섹션에서 컷 이미지를 만들 수 있습니다.','유튜브 쇼츠':'주제 대본 초안 섹션에서 검토합니다. Slack 알림이 갔습니다.','블로그':'블로그 발행 큐(검토 대기)에 저장했습니다.'};
 const SLACK_LABEL={SENT:'Slack 전송됨',FAILED:'Slack 전송 실패',NOT_CONFIGURED:'Slack 미설정'};
 function renderTopicDrafts(items){renderPaged('topic-draft-list',items,'topic-draft-list','아직 생성된 대본 초안이 없습니다.',x=>`<article class="topic-draft" id="topic-draft-${esc(x.id)}"><div class="topic-draft-head"><div><b>${esc(x.title)}</b><p class="meta"><span class="tag wait">검토 대기</span> <span class="tag ${x.slackStatus==='SENT'?'done':'late'}">${esc(SLACK_LABEL[x.slackStatus]||x.slackStatus)}</span> ${esc(x.source)} · ${esc(x.category)} · 우선순위 ${Number(x.priorityScore).toFixed(2)} · ${esc(x.createdAt.replace('T',' ').slice(0,16))}</p></div>${x.slackStatus==='SENT'?'':`<button class="light" data-notify-id="${esc(x.id)}">Slack 알림 재시도</button>`}</div><p class="hook">${esc(x.hook)}</p><pre>${esc(x.script)}</pre><p class="meta">${(x.hashtags||[]).map(t=>esc(t)).join(' ')}</p>${x.slackError?`<p class="slack-error">${esc(x.slackError)}</p>`:''}${x.sourceUrl?`<a class="text-link" href="${esc(x.sourceUrl)}" target="_blank" rel="noreferrer">출처 원문 열기</a>`:''}</article>`);focusHashDraft()}
 // Slack 알림의 검토 링크는 특정 초안을 가리킨다. 그 초안이 뒤 페이지에 있으면
@@ -118,7 +119,7 @@ function load(){
   paint('/api/topic-drafts',renderTopicDrafts),
   paint('/api/slack/status',renderSlack,true),
   paint('/api/instagram-toons',renderToons),
- ]).then(pollToons);
+ ]).then(()=>{pollToons();pollPackages()});
 }
 async function newsRead(id){await fetch(`/api/ai-news/${id}/read`,{method:'PATCH'}).then(r=>r.json()).then(renderNews)}
 $('refresh').onclick=load;
@@ -126,7 +127,18 @@ $('news-list').addEventListener('click',e=>{const a=e.target.closest('a[data-new
 $('news-refresh').onclick=async()=>{const b=$('news-refresh');b.disabled=true;b.textContent='수집 중…';try{if(pageState['news-list'])pageState['news-list'].page=0;renderNews(await fetch('/api/ai-news/refresh',{method:'POST'}).then(r=>r.json()))}finally{b.disabled=false;b.textContent='소식 가져오기'}};
 $('briefing-refresh').onclick=async()=>{const b=$('briefing-refresh');b.disabled=true;b.textContent='요약 중…';try{const r=await fetch('/api/ai-news/briefing/refresh',{method:'POST'});if(!r.ok){const error=await r.json();throw new Error(error.detail||'요약 생성에 실패했습니다.')}renderBriefing(await r.json())}catch(error){alert(error.message)}finally{b.disabled=false;b.textContent='핵심 3건 요약';await loadAiOperations()}};
 $('ai-operations-refresh').onclick=loadAiOperations;
-$('content-package-form').onsubmit=async e=>{e.preventDefault();const form=e.target,button=$('content-package-submit');const data=new FormData(form);const payload={source:data.get('source'),tone:data.get('tone'),target:data.get('target'),channels:data.getAll('channels')};button.disabled=true;button.textContent='패키지 생성 중…';try{const r=await fetch('/api/content-packages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});if(!r.ok){const error=await r.json();throw new Error(error.detail||'콘텐츠 패키지 생성에 실패했습니다.')}form.reset();renderContentPackages(await fetch('/api/content-packages').then(response=>response.json()));await loadAiOperations()}catch(error){alert(error.message)}finally{button.disabled=false;button.textContent='콘텐츠 패키지 생성'}};
+$('content-package-form').onsubmit=async e=>{e.preventDefault();const form=e.target,button=$('content-package-submit');const data=new FormData(form);const payload={source:data.get('source'),tone:data.get('tone'),target:data.get('target'),channels:data.getAll('channels')};button.disabled=true;button.textContent='패키지 생성 중…';try{const r=await fetch('/api/content-packages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});if(!r.ok){const error=await r.json();throw new Error(error.detail||'콘텐츠 패키지 생성에 실패했습니다.')}form.reset();renderContentPackages(await j('/api/content-packages')||[]);pollPackages()}catch(error){alert(error.message)}finally{button.disabled=false;button.textContent='콘텐츠 패키지 생성'}};
+// 채널은 서버가 백그라운드에서 채운다(202). 생성중이 사라질 때까지 목록을 다시 읽고, 끝나면 툰·초안·운영 센터도 갱신한다.
+let packageTimer=null;
+function pollPackages(){
+ clearTimeout(packageTimer);
+ packageTimer=setTimeout(async()=>{
+  const items=await j('/api/content-packages');if(!items)return;
+  renderContentPackages(items);
+  if(items.some(x=>x.outputs.some(o=>o.status==='생성중')))pollPackages();
+  else{renderToons(await j('/api/instagram-toons')||[]);renderTopicDrafts(await j('/api/topic-drafts')||[]);await loadAiOperations()}
+ },3000);
+}
 $('topic-draft-refresh').onclick=async()=>{const b=$('topic-draft-refresh');b.disabled=true;b.textContent='초안 생성 중…';try{const r=await fetch('/api/topic-drafts/refresh',{method:'POST'});if(!r.ok){const error=await r.json().catch(()=>({}));throw new Error(error.detail||'대본 초안 생성에 실패했습니다.')}renderTopicDrafts(await j('/api/topic-drafts')||[])}catch(error){alert(error.message)}finally{b.disabled=false;b.textContent='주제 수집 및 초안 생성';await loadAiOperations()}};
 $('topic-draft-list').addEventListener('click',async e=>{const button=e.target.closest('button[data-notify-id]');if(!button)return;button.disabled=true;button.textContent='재시도 중…';try{const r=await fetch(`/api/topic-drafts/${button.dataset.notifyId}/notify`,{method:'POST'});if(!r.ok){const error=await r.json().catch(()=>({}));throw new Error(error.detail||'Slack 알림 재시도에 실패했습니다.')}const draft=await r.json();if(draft.slackStatus!=='SENT')alert(`Slack 알림을 보내지 못했습니다: ${draft.slackError||'웹훅이 설정되지 않았습니다.'}`);renderTopicDrafts(await j('/api/topic-drafts')||[])}catch(error){alert(error.message);button.disabled=false;button.textContent='Slack 알림 재시도'}});
 $('toon-form').onsubmit=async e=>{
