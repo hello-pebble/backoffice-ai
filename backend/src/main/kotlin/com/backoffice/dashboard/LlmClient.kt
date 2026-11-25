@@ -1,5 +1,6 @@
 package com.backoffice.dashboard
 
+import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
@@ -36,6 +37,9 @@ class LlmClient(private val properties: OfficeProperties, private val objectMapp
      * 정규화한 사유를 담은 IllegalStateException 으로 올린다.
      */
     fun chat(system: String, user: String, jsonMode: Boolean = true): LlmResponse {
+        // 데모의 모델 호출은 여기 한 곳을 반드시 지난다. 한도를 넘으면 IllegalArgumentException 이 나가고
+        // 컨트롤러의 기존 catch 가 400 {"detail":…} 로 바꿔 화면 문구까지 그대로 이어진다.
+        DemoContext.sessionKey()?.let { DemoBudget.consume(it, properties.demo.llmDailyLimit, properties.demo.llmSessionLimit) }
         val target = target()
         val key = properties.aiNews.openAiApiKey.ifBlank { System.getenv("OPENAI_API_KEY") ?: "" }
         if (!target.useOllama) require(key.isNotBlank()) { "OpenAI API 키가 설정되지 않았습니다. config/dashboard.properties에 office.ai-news.open-ai-api-key를 설정하거나 office.ai-news.summary-provider=ollama로 변경하세요." }
@@ -100,6 +104,38 @@ class LlmClient(private val properties: OfficeProperties, private val objectMapp
         }
     }
 
+    /**
+     * 이미지 한 장. Imagen 은 chat 이 아니라 :predict 라 주소도 헤더도 다르지만,
+     * 타임아웃·재시도·오류 문구 정규화는 send() 를 그대로 탄다.
+     * send() 가 4xx 를 재시도하지 않는 것이 여기서는 오히려 맞다 — 안전 필터 거부가 4xx 다.
+     */
+    fun image(prompt: String, model: String): LlmImage {
+        val key = properties.llm.imageApiKey
+        // 폴백하지 않는다. open-ai-api-key 가 구글 키가 아닐 수 있고, 그걸 구글에 보내면 키가 샌다.
+        require(key.isNotBlank()) { "이미지 API 키(office.llm.image-api-key)를 설정하세요." }
+        val body = objectMapper.writeValueAsString(
+            mapOf(
+                "instances" to listOf(mapOf("prompt" to prompt)),
+                "parameters" to mapOf("sampleCount" to 1, "aspectRatio" to "1:1"),
+            )
+        )
+        val request = HttpRequest.newBuilder(URI("${properties.llm.imageBaseUrl.trim().trimEnd('/')}/models/$model:predict"))
+            .timeout(Duration.ofSeconds(properties.llm.requestTimeoutSeconds))
+            .header("Content-Type", "application/json")
+            // Bearer 가 아니다. Chat 경로와 인증 헤더가 다르다.
+            .header("x-goog-api-key", key)
+            .POST(HttpRequest.BodyPublishers.ofString(body))
+            .build()
+        val prediction = objectMapper.readTree(send(request)).path("predictions").firstOrNull()
+            ?: throw IllegalStateException("이미지 응답이 비어 있습니다. 프롬프트가 안전 필터에 걸렸을 수 있습니다.")
+        val encoded = prediction.path("bytesBase64Encoded").asText("")
+        if (encoded.isBlank()) throw IllegalStateException("이미지 응답에 그림이 들어 있지 않습니다.")
+        return LlmImage(java.util.Base64.getDecoder().decode(encoded), prediction.path("mimeType").asText("image/png"))
+    }
+
+    /** 이미지는 토큰이 아니라 장당 단가라 estimateCostUsd 와 단위가 다르다. */
+    fun imageCostUsd(count: Int): Double = properties.llm.imagePriceUsd * count
+
     private fun costOf(target: LlmTarget, inputTokens: Long, outputTokens: Long): Double =
         if (target.useOllama) 0.0 else estimateCostUsd(target.model, inputTokens, outputTokens)
 
@@ -108,13 +144,31 @@ class LlmClient(private val properties: OfficeProperties, private val objectMapp
      * 워커(Python)가 돌려준 사용량도 같은 표로 환산해야 비용이 한 기준으로 모인다.
      */
     fun estimateCostUsd(model: String, inputTokens: Long, outputTokens: Long): Double {
-        val configured = properties.llm.prices[model]?.split(",")?.mapNotNull { it.trim().toDoubleOrNull() }
+        // 단가표 키도 정규화한 이름으로 찾는다. 예전 설정이 원문 이름으로 적혀 있으면 그것도 받는다.
+        val configured = (properties.llm.prices[canonicalModel(model)] ?: properties.llm.prices[model])
+            ?.split(",")?.mapNotNull { it.trim().toDoubleOrNull() }
         val input = configured?.getOrNull(0) ?: properties.aiNews.inputPricePerMillionUsd
         val output = configured?.getOrNull(1) ?: properties.aiNews.outputPricePerMillionUsd
         return inputTokens * input / 1_000_000 + outputTokens * output / 1_000_000
     }
 
     companion object {
+        /**
+         * 기록·단가표용 모델 이름. 같은 모델이 "OpenAI/GPT-4o", "gpt-4o " 처럼 다르게 적히면
+         * 운영 센터에서 두 줄로 갈라지고 단가도 못 찾는다. 제공자에 보내는 이름은 바꾸지 않는다.
+         */
+        fun canonicalModel(name: String): String = name.trim().substringAfterLast('/').lowercase()
+
+        /**
+         * "반드시 JSON만" 이라고 해도 JSON 모드를 무시하고 앞뒤에 설명 문장을 붙이는 호환 제공자가 있다.
+         * 첫 중괄호 블록만 다시 시도한다. 세 서비스가 각자 들고 있던 규칙을 여기 한 곳으로 모았다.
+         */
+        fun jsonOf(objectMapper: ObjectMapper, content: String): JsonNode =
+            runCatching { objectMapper.readTree(content) }
+                // 중괄호가 아예 없으면 "{}" 로 통과해 빈 객체가 되고, 서비스는 "cards 가 없습니다" 같은 엉뚱한 사유를 남긴다.
+                .recoverCatching { check('{' in content && '}' in content); objectMapper.readTree("{" + content.substringAfter('{').substringBeforeLast('}') + "}") }
+                .getOrElse { throw IllegalStateException("모델이 JSON 형식을 만들지 못했습니다. 더 큰 모델을 쓰거나 다시 시도하세요.") }
+
         // 주소가 깨져 있으면 URI 파싱부터 터진다. 그 경우에도 설정값을 그대로 보여 줘야
         // 어디가 잘못됐는지 알 수 있으므로 host 추출 실패는 전체 문자열로 대체한다.
         fun vendorOf(useOllama: Boolean, endpoint: String): String =
@@ -138,5 +192,6 @@ class LlmClient(private val properties: OfficeProperties, private val objectMapp
     }
 }
 
+data class LlmImage(val bytes: ByteArray, val mimeType: String)
 data class LlmTarget(val useOllama: Boolean, val endpoint: String, val model: String, val vendor: String)
 data class LlmResponse(val content: String, val inputTokens: Long, val outputTokens: Long, val target: LlmTarget, val costUsd: Double)

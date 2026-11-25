@@ -1,0 +1,222 @@
+[
+  {
+    "id": "05b5e14c97505dcc55095fc0f1c303f9491b2ecd0165d78d8f9bb2ef397967bc",
+    "url": "https://deepmind.google/blog/were-launching-lyria-35-in-google-flow-music-with-advances-across-musicality-lyrics-vocals-and-creative-control/",
+    "read": false,
+    "title": "We’re launching Lyria 3.5 in Google Flow Music, with advances across musicality, lyrics, vocals, and creative control",
+    "source": "Google DeepMind",
+    "summary": "",
+    "category": "업계 소식",
+    "collectedAt": "{{today-4}}T16:30:43.224420100+09:00",
+    "publishedAt": "Wed, 29 Jul 2026 16:02:10 +0000"
+  },
+  {
+    "id": "ac6eb9276806c2f8127da583e949efb9c54aa88e5f88837b0aefed9cb8f0d861",
+    "url": "https://deepmind.google/blog/intelligent-transcription-with-gemini-3-5-transcribe/",
+    "read": false,
+    "title": "Intelligent transcription with Gemini 3.5 Transcribe",
+    "source": "Google DeepMind",
+    "summary": "Now you can get more intelligent speech-to-text transcription with Gemini 3.5 Transcribe.",
+    "category": "모델",
+    "collectedAt": "{{today-4}}T16:30:43.223420700+09:00",
+    "publishedAt": "Wed, 26 Aug 2026 17:01:00 +0000"
+  },
+  {
+    "id": "17177c100c9150295f9a783a1f42c5ab7f67d636429664b84dc83f06cd3f4a18",
+    "url": "https://huggingface.co/blog/train-multi-vector-encoder",
+    "read": false,
+    "title": "Training and Finetuning Multi-Vector Embedding Models with Sentence Transformers",
+    "source": "Hugging Face",
+    "summary": "",
+    "category": "모델",
+    "collectedAt": "{{today-4}}T16:30:43.759734900+09:00",
+    "publishedAt": "Wed, 26 Aug 2026 00:00:00 GMT"
+  },
+  {
+    "id": "172fd12b4fe6c6e04c478dd20e07db1c5185fccb3f4ccc7969d97231e1e1592d",
+    "url": "https://deepmind.google/blog/introducing-computer-use-in-gemini-3-5-flash/",
+    "read": false,
+    "title": "Introducing computer use in Gemini 3.5 Flash",
+    "source": "Google DeepMind",
+    "summary": "",
+    "category": "에이전트",
+    "collectedAt": "{{today-4}}T16:30:43.227445700+09:00",
+    "publishedAt": "Wed, 24 Jun 2026 16:30:01 +0000"
+  },
+  {
+    "id": "a821810ee2b72f1657951f98e0d3d3c7550a9b1a8fbce48196b12e56fa85a9cc",
+    "url": "https://deepmind.google/blog/accelerating-the-frontiers-of-scientific-discovery-googles-40m-commitment-to-the-genesis-mission/",
+    "read": false,
+    "title": "Accelerating the frontiers of scientific discovery: Google’s $40M commitment to the Genesis Mission",
+    "source": "Google DeepMind",
+    "summary": "Google commits $40M in AI tokens and credits for the Genesis Mission",
+    "category": "업계 소식",
+    "collectedAt": "{{today-4}}T16:30:43.225419400+09:00",
+    "publishedAt": "Wed, 22 Jul 2026 13:38:54 +0000"
+  },
+  {
+    "id": "969cdff003616d877728734c0df8eb69cbcac3e36aeedc2eef49af940b3cc6b5",
+    "url": "https://huggingface.co/blog/ibm-research/model-routing-is-simple-until-it-isnt",
+    "read": false,
+    "title": "Model Routing Is Simple. Until It Isn’t.",
+    "source": "Hugging Face",
+    "summary": "",
+    "category": "모델",
+    "collectedAt": "{{today-4}}T16:30:43.764333900+09:00",
+    "publishedAt": "Wed, 15 Jul 2026 17:27:01 GMT"
+  },
+  {
+    "id": "7f36308856b0311fcff4f4439bf2df1cf5d0ade39f366d71c47364dd13170cfe",
+    "url": "https://huggingface.co/blog/thinkingmachines-inkling",
+    "read": false,
+    "title": "Welcome Inkling by Thinking Machines",
+    "source": "Hugging Face",
+    "summary": "",
+    "category": "업계 소식",
+    "collectedAt": "{{today-4}}T16:30:43.764333900+09:00",
+    "publishedAt": "Wed, 15 Jul 2026 00:00:00 GMT"
+  },
+  {
+    "id": "5e1ffb76943884fba9ea1ab5c1316be0c7312e7f4c34cac3c6edffda677bb954",
+    "url": "https://huggingface.co/blog/real-world-voiceeq",
+    "read": false,
+    "title": "Introducing Real World VoiceEQ: Measuring the human quality of voice AI",
+    "source": "Hugging Face",
+    "summary": "",
+    "category": "업계 소식",
+    "collectedAt": "{{today-4}}T16:30:43.764333900+09:00",
+    "publishedAt": "Wed, 15 Jul 2026 00:00:00 GMT"
+  },
+  {
+    "id": "249a5e1ede4df4c078023a6f0eb49ede54fb5bdd187586ea50eee351b3c1007c",
+    "url": "https://huggingface.co/blog/allenai/olmoearth-embeddings",
+    "read": false,
+    "title": "Introducing OlmoEarth embeddings: Custom embedding exports from OlmoEarth Studio for downstream analysis",
+    "source": "Hugging Face",
+    "summary": "",
+    "category": "업계 소식",
+    "collectedAt": "{{today-4}}T16:30:43.761240500+09:00",
+    "publishedAt": "Wed, 12 Aug 2026 16:14:36 GMT"
+  },
+  {
+    "id": "1357a9ae7911e1d557ac7ffa71b9c9e7ae12a960458a027aff8f7f846d93a6f9",
+    "url": "https://deepmind.google/blog/putting-sign-language-ai-into-users-hands/",
+    "read": false,
+    "title": "Putting sign language AI into users’ hands",
+    "source": "Google DeepMind",
+    "summary": "Introducing sign-language-to-text (SL2T), our breakthrough model powering new sign language features for Deaf and hard of hearing users.",
+    "category": "모델",
+    "collectedAt": "{{today-4}}T16:30:43.223420700+09:00",
+    "publishedAt": "Wed, 12 Aug 2026 14:01:59 +0000"
+  },
+  {
+    "id": "e424724a1fa2a12d7fb2b1ee6229dfb01887ad4840d474b78c57b110ad1914df",
+    "url": "https://deepmind.google/blog/diffusiongemma-4x-faster-text-generation/",
+    "read": false,
+    "title": "DiffusionGemma: 4x faster text generation",
+    "source": "Google DeepMind",
+    "summary": "",
+    "category": "업계 소식",
+    "collectedAt": "{{today-4}}T16:30:43.230450900+09:00",
+    "publishedAt": "Wed, 10 Jun 2026 16:24:11 +0000"
+  },
+  {
+    "id": "416f1eec7676dbeb9ae83f45ce4a5939bd7ddff59f32eaae46247ba3ec36169d",
+    "url": "https://deepmind.google/blog/investing-in-multi-agent-ai-safety-research/",
+    "read": false,
+    "title": "Investing in multi-agent AI safety research",
+    "source": "Google DeepMind",
+    "summary": "Google DeepMind and partners announce a $10M funding call for multi-agent safety research.",
+    "category": "에이전트",
+    "collectedAt": "{{today-4}}T16:30:43.230450900+09:00",
+    "publishedAt": "Wed, 10 Jun 2026 10:21:19 +0000"
+  },
+  {
+    "id": "d721843382f3485e8d6d91c4d601c9e6cb9967991dd973de27f13e5177b1d991",
+    "url": "https://deepmind.google/blog/proactive-cyber-defense-for-governments-and-enterprises/",
+    "read": false,
+    "title": "Proactive cyber defense for governments and enterprises",
+    "source": "Google DeepMind",
+    "summary": "",
+    "category": "업계 소식",
+    "collectedAt": "{{today}}T20:24:22.999497500+09:00",
+    "publishedAt": "Wed, 02 Sep 2026 16:24:24 +0000"
+  },
+  {
+    "id": "63b19b50b4021cb509d5c4a675b6f4583edca7a589c287051e4f84fcde02cdbf",
+    "url": "https://deepmind.google/blog/introducing-gemini-3-8-flash-and-38-flash-cyber/",
+    "read": false,
+    "title": "Introducing Gemini 3.8 Flash and 3.8 Flash Cyber",
+    "source": "Google DeepMind",
+    "summary": "",
+    "category": "모델",
+    "collectedAt": "{{today}}T20:24:23.000999400+09:00",
+    "publishedAt": "Wed, 02 Sep 2026 16:18:31 +0000"
+  },
+  {
+    "id": "8c10bd00da2e478d246d8a5ed5ef6c67574eeadd8eaf7af8addbaf53aeec5060",
+    "url": "https://huggingface.co/blog/ibm-research/real-time-intelligence",
+    "read": false,
+    "title": "Real-Time Intelligence with IBM Time Series Models on Confluent",
+    "source": "Hugging Face",
+    "summary": "",
+    "category": "모델",
+    "collectedAt": "{{today}}T20:24:23.535157300+09:00",
+    "publishedAt": "Wed, 02 Sep 2026 13:49:14 GMT"
+  },
+  {
+    "id": "270bf5aff18a95d12deb9cb75bd5d487163e79e71135998978191c04bd59f177",
+    "url": "https://deepmind.google/blog/start-building-with-nano-banana-2-lite-and-gemini-omni-flash/",
+    "read": false,
+    "title": "Start building with Nano Banana 2 Lite and Gemini Omni Flash",
+    "source": "Google DeepMind",
+    "summary": "",
+    "category": "모델",
+    "collectedAt": "{{today-4}}T16:30:43.227445700+09:00",
+    "publishedAt": "Tue, 30 Jun 2026 16:02:40 +0000"
+  },
+  {
+    "id": "42a1992e4b242ffc8c8c09406322964d2510a1c23c0bca59f1b872c69be44078",
+    "url": "https://deepmind.google/blog/gemini-robotics-2-brings-whole-body-intelligence-to-robots/",
+    "read": false,
+    "title": "Gemini Robotics 2 brings whole body intelligence to robots",
+    "source": "Google DeepMind",
+    "summary": "",
+    "category": "모델",
+    "collectedAt": "{{today-4}}T16:30:43.224420100+09:00",
+    "publishedAt": "Tue, 28 Jul 2026 13:21:37 +0000"
+  },
+  {
+    "id": "d21068479952e40383665c65fe6b8de94dbcd998c34b8b8d4618ffe8cce61e93",
+    "url": "https://huggingface.co/blog/ibm-granite/granite-4-2",
+    "read": false,
+    "title": "Granite 4.2 LLMs: How They're Built",
+    "source": "Hugging Face",
+    "summary": "",
+    "category": "업계 소식",
+    "collectedAt": "{{today-4}}T16:30:43.759734900+09:00",
+    "publishedAt": "Tue, 25 Aug 2026 15:14:14 GMT"
+  },
+  {
+    "id": "f1c76f23a788b6884a2877cd63f8a9bdec3da0e05f2a60f5b1fd57979e05c843",
+    "url": "https://huggingface.co/blog/MultiverseComputingCAI/quantization-aware-healing",
+    "read": false,
+    "title": "Quantization-Aware Healing: a compressed, 4-bit model that outperforms its full-precision original",
+    "source": "Hugging Face",
+    "summary": "",
+    "category": "모델",
+    "collectedAt": "{{today-4}}T16:30:43.760237700+09:00",
+    "publishedAt": "Tue, 25 Aug 2026 11:39:24 GMT"
+  },
+  {
+    "id": "9b54a38fa1b1a3f1fc1fd60d911784f4064b31ff199e66bfc392aa7f95235b93",
+    "url": "https://huggingface.co/blog/gradio-workflow-guide",
+    "read": false,
+    "title": "Wire It, Run It, Deploy It: AI Workflows in Gradio",
+    "source": "Hugging Face",
+    "summary": "",
+    "category": "업계 소식",
+    "collectedAt": "{{today-4}}T16:30:43.760237700+09:00",
+    "publishedAt": "Tue, 25 Aug 2026 00:00:00 GMT"
+  }
+]

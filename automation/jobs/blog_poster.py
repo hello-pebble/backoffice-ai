@@ -4,7 +4,6 @@
 """
 import uuid
 import time
-from datetime import datetime
 from typing import Dict, Any, Optional
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -20,6 +19,7 @@ from config.settings import (
     MAX_RETRY_ATTEMPTS,
     RETRY_DELAY
 )
+from automation.shared.clock import now_kst
 from automation.shared.logger import logger
 from automation.shared.backend_client import Database
 
@@ -282,21 +282,16 @@ class BlogPoster:
             'id': str(uuid.uuid4()),
             'content_id': content_id,
             'blog_url': blog_url or '',
-            'posted_date': datetime.now().isoformat(),
+            'posted_date': now_kst().isoformat(),
             'status': status,
             'error_message': error_message
         }
         
         self.db.save_posting_history(history_data)
         
-        # 콘텐츠 상태 업데이트
+        # 발행 완료 표시. save_content 로 보내면 본문이 빈 값으로 덮인다.
         if status == 'success':
-            content_data = {
-                'id': content_id,
-                'status': 'posted',
-                'posted_date': datetime.now().isoformat()
-            }
-            self.db.save_content(content_data)
+            self.db.update_content_status(content_id, 'posted', now_kst().isoformat())
     
     def post_pending_contents(self) -> int:
         """
@@ -316,31 +311,21 @@ class BlogPoster:
             return 0
         
         try:
-            # TODO: 데이터베이스에서 pending 상태의 콘텐츠 조회
-            # 현재는 예시 구현
-            
+            # 승인된 글만 발행한다. 대본 생성 화면에서 승인해야 approved 가 된다.
+            contents = self.db.get_contents(status='approved')
+            if not contents:
+                logger.info("승인된 콘텐츠가 없습니다.")
+                return 0
             self._init_driver()
             posted_count = 0
-            
-            # 실제 구현 시 데이터베이스에서 조회
-            # contents = self.db.get_pending_contents()
-            # for content in contents:
-            #     blog_url = self.post_with_retry(content)
-            #     if blog_url:
-            #         self.save_posting_history(
-            #             content['id'], 
-            #             blog_url, 
-            #             'success'
-            #         )
-            #         posted_count += 1
-            #     else:
-            #         self.save_posting_history(
-            #             content['id'], 
-            #             None, 
-            #             'failed',
-            #             '포스팅 실패'
-            #         )
-            
+            for content in contents:
+                blog_url = self.post_with_retry(content)
+                if blog_url:
+                    self.save_posting_history(content['id'], blog_url, 'success')
+                    posted_count += 1
+                else:
+                    self.save_posting_history(content['id'], None, 'failed', '포스팅 실패')
+
             logger.info(f"콘텐츠 포스팅 완료: {posted_count}개")
             return posted_count
             

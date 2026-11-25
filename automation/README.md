@@ -1,14 +1,20 @@
 # Python 자동화
 
-백오피스의 블로그 자동화와 인스타툰 대본 생성을 담당하는 Python 워커입니다. 외부 발행은 검토 승인 전에는 실행하지 않습니다.
+백오피스의 **블로그 자동화**(키워드 수집 → 글 생성 → 네이버 발행)를 담당하는 Python 워커입니다. 외부 발행은 검토 승인 전에는 실행하지 않습니다.
+
+> 인스타툰 대본 생성은 **Kotlin 백엔드로 옮겼습니다**. 배포 이미지에 파이썬이 없어 실제로는 동작하지 않았고, 하는 일이 모델 한 번 호출이라 공용 `LlmClient`를 쓰는 편이 재시도·비용 기록·데모 상한을 그대로 받습니다. 이 폴더의 `jobs/instagram_toon/`과 `scripts/run_instagram_toon.py`는 **로컬 CLI 전용**으로 남겨 둔 것이며 대시보드는 부르지 않습니다.
 
 ## 구성
 
-- `main.py`: 블로그 자동화 워커 시작점
-- `jobs/`: 키워드 수집, 콘텐츠 생성, 포스팅, 스케줄링과 인스타툰 생성 작업
-- `scripts/`: 수동 실행용 명령
-- `shared/`: 재사용 가능한 로깅과 데이터베이스 도구
+- `main.py`: CLI 진입점. `--mode {api|scheduler|keyword|content|posting|all}`로 실행
+- `worker_api.py`: FastAPI 서버. Railway에서 백엔드(Kotlin `PythonAutomationService`)가 `POST /run`으로 원격 트리거할 때 사용(`X-Worker-Api-Key` 헤더 인증, 동시 실행은 락으로 방지)
+- `jobs/`: 키워드 수집(`keyword_collector.py` — 구글 트렌드 최근 `GOOGLE_TRENDS_HOURS`시간(기본 7일) 인기 검색어를 `KEYWORD_INCLUDE` 포함어로 걸러 저장, 내부 API 실패 시 당일 RSS. 네이버 연동은 TODO), 콘텐츠 생성(`content_generator.py`), 포스팅(`blog_poster.py` — 백엔드가 준 `approved` 글만 발행, 완료는 상태만 PATCH), 스케줄링(`scheduler.py` — 키워드·콘텐츠·포스팅 크론에 더해 `MORNING_PREP_TIME`에 백엔드 `/api/worker/morning-prep`를 불러 아침 점검용 소식·요약·초안을 미리 만듦)
+- `jobs/instagram_toon/`, `scripts/run_instagram_toon.py`: 로컬 CLI 전용 인스타툰 생성기(대시보드는 Kotlin 쪽을 씁니다)
+- `shared/`: 화면·특정 업무에 종속되지 않는 재사용 유틸 — `logger.py`, `backend_client.py`(백엔드 API 호출. 본문 키를 snake_case→camelCase로 바꿔 보낸다), `usage.py`(토큰 사용량 집계)
+- `tests/`: `backend_client`, `settings_contract`, `usage` 단위 테스트
 - `requirements.txt`: Python 의존성
+
+결과와 상태는 화면이 아니라 API/DB로 전달합니다. 예를 들어 `content` 모드는 토큰 사용량 한 줄을 stdout으로만 출력하고, 백오피스가 이 줄을 파싱해 읽습니다.
 
 ## 설치
 

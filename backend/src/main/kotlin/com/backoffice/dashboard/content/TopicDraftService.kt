@@ -1,0 +1,245 @@
+package com.backoffice.dashboard.content
+
+import com.backoffice.dashboard.*
+import com.backoffice.dashboard.operations.*
+import com.fasterxml.jackson.databind.ObjectMapper
+import org.springframework.stereotype.Service
+import java.time.Duration
+import java.time.OffsetDateTime
+import java.time.format.DateTimeFormatter
+import java.util.UUID
+import kotlin.math.exp
+
+/**
+ * 대본 생성(패키지)의 쇼츠 채널 에이전트. 원본 텍스트로 45~60초 숏폼 검토 대본을 만든다.
+ * 소식·키워드 중 우선순위 주제를 고르는 nextCandidate 도 여기 있다("최신성 + 카테고리 관련성").
+ * Slack·검토 링크는 패키지가 맡는다. 여기서는 보내지 않는다.
+ */
+@Service
+class TopicDraftService(
+    private val aiNewsService: AiNewsService,
+    private val automationRepository: AutomationRepository,
+    private val objectMapper: ObjectMapper,
+    private val aiOperationsService: AiOperationsService,
+    private val documents: JsonDocumentStore,
+    private val llm: LlmClient,
+) {
+
+    /**
+     * 소식·키워드 중 우선순위가 가장 높은 주제 1건. 대본 생성 화면이 원본을 채울 때 쓴다.
+     * 키워드는 여기서 소진하지 않는다. 가져오기만 하고 생성하지 않은 키워드가 사라지면 안 된다.
+     * 데모도 키워드를 읽는다(읽기만). 소진은 ContentStudioService 가 데모의 keywordId 를 버려서 막는다.
+     */
+    fun nextCandidate(): DraftSource? {
+        val now = OffsetDateTime.now()
+        val news = aiNewsService.refresh()
+        val newsCandidate = selectCandidate(news, load().map { it.sourceId }.toSet(), now)?.let { DraftSource.fromNews(it, now) }
+        // 우선순위·검색량이 높은 키워드 하나만 후보로 본다. 이미 automationRepository 가 그 순서로 정렬해 준다.
+        val keyword = automationRepository.unusedKeywords(1).firstOrNull()
+        return listOfNotNull(newsCandidate, keyword?.let { DraftSource.fromKeyword(it) }).maxByOrNull { it.priorityScore }
+    }
+
+    /**
+     * 원본 텍스트로 쇼츠 대본을 만들어 검토 대기로 저장한다.
+     * sourceId 는 원본이 소식·키워드에서 왔을 때 그 id 다. 남겨 둬야 nextCandidate 가 같은 주제를 다시 고르지 않는다.
+     */
+    @Synchronized
+    fun draftFromText(title: String, source: String, sourceId: String? = null): TopicDraft {
+        val startedAt = System.nanoTime()
+        val target = llm.target()
+        val candidate = DraftSource.fromText(title, source, sourceId)
+        val (usage, script) = try {
+            generate(candidate)
+        } catch (error: Exception) {
+            val reason = LlmClient.reasonOf(error)
+            aiOperationsService.record(
+                agent = "주제 대본 초안 에이전트", provider = target.vendor, model = target.model,
+                tools = listOf(candidate.toolLabel, llm.toolLabel(target)),
+                durationMs = (System.nanoTime() - startedAt) / 1_000_000, status = "실패", error = "${target.endpoint} → $reason",
+            )
+            throw IllegalStateException("대본 초안 생성에 실패했습니다 (${target.endpoint}): $reason", error)
+        }
+        val draft = persist(candidate, script, target.model, OffsetDateTime.now())
+        aiOperationsService.record(
+            agent = "주제 대본 초안 에이전트", provider = target.vendor, model = target.model,
+            tools = listOf(candidate.toolLabel, llm.toolLabel(target)),
+            durationMs = (System.nanoTime() - startedAt) / 1_000_000,
+            inputTokens = usage.inputTokens, outputTokens = usage.outputTokens, estimatedCostUsd = usage.costUsd,
+            resultPreview = "${draft.title} · 검토 대기 초안을 저장했습니다.",
+        )
+        return draft
+    }
+
+    /** 검토 대기로 저장한다. slackStatus·reviewUrl 은 옛 문서와 모양을 맞추려고 남긴 필드다(패키지가 알림을 보낸다). */
+    internal fun persist(candidate: DraftSource, script: TopicScript, model: String, now: OffsetDateTime): TopicDraft {
+        val id = UUID.randomUUID().toString()
+        val draft = TopicDraft(
+            id = id,
+            sourceId = candidate.sourceId,
+            source = candidate.source,
+            sourceTitle = candidate.sourceTitle,
+            sourceUrl = candidate.sourceUrl,
+            category = candidate.category,
+            priorityScore = candidate.priorityScore,
+            title = script.title,
+            hook = script.hook,
+            script = script.script,
+            hashtags = script.hashtags,
+            reviewStatus = "REVIEW_PENDING",
+            slackStatus = "SKIPPED",
+            slackError = null,
+            reviewUrl = "",
+            model = model,
+            createdAt = now.toString(),
+        )
+        save((listOf(draft) + load()).take(50))
+        return draft
+    }
+
+    private fun generate(source: DraftSource): Pair<LlmResponse, TopicScript> {
+        val prompt = """다음 내용 하나를 소개하는 한국어 숏폼 검토 대본을 작성하세요.
+읽어서 45~60초 분량(공백 포함 550~750자)으로 씁니다.
+${source.guardrail}
+반드시 JSON만 반환하세요: {"title":"영상 제목","hook":"3초 훅 한 문장","script":"대본 전문","hashtags":["태그","태그"]}.
+
+제목=${source.sourceTitle}
+${source.context}"""
+        val response = llm.chat("당신은 사실을 과장하지 않는 한국어 숏폼 대본 작가입니다.", prompt)
+        return response to parseScript(response.content)
+    }
+
+    private fun parseScript(content: String): TopicScript {
+        val node = LlmClient.jsonOf(objectMapper, content)
+        val title = node.path("title").asText("").trim()
+        val hook = node.path("hook").asText("").trim()
+        val script = node.path("script").asText("").trim()
+        val hashtags = node.path("hashtags").map { it.asText("").trim() }.filter { it.isNotBlank() }
+        if (title.isBlank() || hook.isBlank() || script.isBlank()) {
+            throw IllegalStateException("대본 응답에 title·hook·script 가 모두 들어 있지 않습니다.")
+        }
+        return TopicScript(title, hook, script, hashtags)
+    }
+
+    private fun load(): List<TopicDraft> = documents.readList("topic-drafts", TopicDraft::class.java)
+    private fun save(items: List<TopicDraft>) = documents.write("topic-drafts", items)
+
+    companion object {
+        private val CATEGORY_WEIGHT = mapOf("모델" to 5.0, "에이전트" to 4.0, "이미지·영상" to 3.0, "연구·안전" to 2.0)
+
+        /** 카테고리 가중치 + 최신성 점수(48시간 감쇠). 인기 지표가 아니라 우선순위 점수다. */
+        fun priorityScore(item: AiNewsItem, now: OffsetDateTime): Double {
+            val weight = CATEGORY_WEIGHT[item.category] ?: 1.0
+            val published = parseTime(item.publishedAt) ?: parseTime(item.collectedAt)
+            val hours = published?.let { maxOf(0.0, Duration.between(it, now).toMinutes() / 60.0) } ?: 48.0
+            return weight + 5.0 * exp(-hours / 48.0)
+        }
+
+        /** 이미 초안으로 만든 source id 는 제외한다. 같은 주제로 두 번 대본을 만들지 않는다. */
+        fun selectCandidate(items: List<AiNewsItem>, usedSourceIds: Set<String>, now: OffsetDateTime): AiNewsItem? =
+            items.filterNot { it.id in usedSourceIds }.maxByOrNull { priorityScore(it, now) }
+
+        // ponytail: priority·search_volume 단위가 뉴스 카테고리 가중치(1~10)와 안 맞을 수 있는 임의 환산이다.
+        // 실제 데이터로 어느 쪽이 계속 이기는지 보고 스케일을 조정하라.
+        fun keywordPriorityScore(item: AutomationKeyword): Double =
+            item.priority.toDouble() + (item.searchVolume / 1000.0).coerceIn(0.0, 5.0)
+
+        // RFC 1123(pubDate)과 ISO 8601(Atom)이 섞여 들어온다. 못 읽으면 48시간 경과로 본다.
+        private fun parseTime(value: String?): OffsetDateTime? {
+            if (value.isNullOrBlank()) return null
+            return runCatching { OffsetDateTime.parse(value) }
+                .recoverCatching { OffsetDateTime.parse(value, DateTimeFormatter.RFC_1123_DATE_TIME) }
+                .getOrNull()
+        }
+    }
+}
+
+/** 뉴스 기사와 자동화 키워드처럼 서로 다른 후보를 같은 방식으로 고르고 대본 프롬프트를 만들기 위한 공통 형태. */
+data class DraftSource(
+    val sourceId: String,
+    val source: String,
+    val sourceTitle: String,
+    val sourceUrl: String,
+    val category: String,
+    val priorityScore: Double,
+    val guardrail: String,
+    val context: String,
+    val toolLabel: String,
+    val keyword: AutomationKeyword? = null,
+) {
+    companion object {
+        private const val NEWS_GUARDRAIL = "아래 제목·요약·주소에 있는 내용만 근거로 삼고, 원문에 없는 수치·기능·출시일·추측은 만들지 마세요."
+        private const val KEYWORD_GUARDRAIL = "키워드와 관련해 일반적으로 알려진 사실만 사용하고, 확인되지 않는 수치·통계·최신 소식은 만들지 마세요."
+        private const val TEXT_GUARDRAIL = "아래 원본에 있는 내용만 근거로 삼고, 원본에 없는 수치·기능·추측은 만들지 마세요."
+
+        fun fromNews(item: AiNewsItem, now: OffsetDateTime): DraftSource = DraftSource(
+            sourceId = item.id,
+            source = item.source,
+            sourceTitle = item.title,
+            sourceUrl = item.url,
+            category = item.category,
+            priorityScore = TopicDraftService.priorityScore(item, now),
+            guardrail = NEWS_GUARDRAIL,
+            context = "요약=${item.summary}\n주소=${item.url}\n출처=${item.source}",
+            toolLabel = "AI 뉴스 수집",
+        )
+
+        fun fromText(title: String, source: String, sourceId: String? = null): DraftSource = DraftSource(
+            sourceId = sourceId ?: "studio-${UUID.randomUUID()}",
+            source = "콘텐츠 스튜디오",
+            sourceTitle = title,
+            sourceUrl = "",
+            category = "스튜디오",
+            priorityScore = 0.0,
+            guardrail = TEXT_GUARDRAIL,
+            context = "원본=$source",
+            toolLabel = "콘텐츠 스튜디오 원본",
+        )
+
+        fun fromKeyword(item: AutomationKeyword): DraftSource = DraftSource(
+            sourceId = "keyword-${item.id}",
+            source = "키워드 수집",
+            sourceTitle = item.keyword,
+            sourceUrl = "",
+            category = item.category,
+            priorityScore = TopicDraftService.keywordPriorityScore(item),
+            guardrail = KEYWORD_GUARDRAIL,
+            context = "키워드=${item.keyword}\n카테고리=${item.category}",
+            toolLabel = "키워드 수집",
+            keyword = item,
+        )
+    }
+}
+
+/** 대본 생성 화면의 "주제 가져오기" 응답. context 는 원본 textarea 에 그대로 들어간다. */
+data class TopicCandidate(val sourceId: String, val source: String, val title: String, val context: String, val keywordId: Long?) {
+    companion object {
+        fun of(candidate: DraftSource) = TopicCandidate(candidate.sourceId, candidate.source, candidate.sourceTitle, candidate.context, candidate.keyword?.id)
+    }
+}
+
+data class TopicScript(
+    val title: String,
+    val hook: String,
+    val script: String,
+    val hashtags: List<String>,
+)
+
+data class TopicDraft(
+    val id: String,
+    val sourceId: String,
+    val source: String,
+    val sourceTitle: String,
+    val sourceUrl: String,
+    val category: String,
+    val priorityScore: Double,
+    val title: String,
+    val hook: String,
+    val script: String,
+    val hashtags: List<String>,
+    val reviewStatus: String,
+    val slackStatus: String,
+    val slackError: String? = null,
+    val reviewUrl: String,
+    val model: String,
+    val createdAt: String,
+)

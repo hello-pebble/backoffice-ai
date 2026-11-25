@@ -73,7 +73,8 @@
 | `OFFICE_TOSS_CLIENT_ID` / `_SECRET` | 발급값 | 토스증권 개발자센터 (§3) |
 | `OFFICE_TOSS_WATCHLIST` | `005930,000660,373220` | 원하는 종목코드 |
 | `OFFICE_GMAIL_ENABLED` | `true` | — |
-| `OFFICE_GMAIL_REDIRECT_URI` | `https://backoffice-ai-production.up.railway.app/api/gmail/callback` | **이미 등록된 값 유지.** Gmail은 쿠키를 쓰지 않아 Railway 주소 그대로 둡니다 |
+| ~~`OFFICE_GMAIL_REDIRECT_URI`~~ | — | **더 이상 읽지 않습니다.** Google 로그인이 Gmail 권한까지 함께 받아 별도 콜백이 없어졌습니다 |
+| `OFFICE_LLM_IMAGE_API_KEY` | Google AI Studio 키 | 컷 이미지 생성용. 비우면 이미지만 실패하고 나머지는 정상 |
 | `OFFICE_AI_NEWS_SUMMARY_PROVIDER` | `openai` | Railway엔 ollama가 없습니다 |
 | `OFFICE_AI_NEWS_OPEN_AI_API_KEY` | API 키 | OpenAI (§5) |
 | `OFFICE_AI_NEWS_SUMMARY_MODEL` | 모델명 | OpenAI (§5) |
@@ -112,9 +113,12 @@
 4. 생성된 **클라이언트 JSON 파일 다운로드**
 
 ### 등록할 것
-- 승인된 리디렉션 URI에 `https://backoffice-ai-production.up.railway.app/api/gmail/callback` 추가 — **등록 완료**
-- 같은 값을 Railway `OFFICE_GMAIL_REDIRECT_URI`에도 등록 — **한 글자라도 다르면 `redirect_uri_mismatch`**
-- 로컬에서도 쓸 거면 `http://127.0.0.1:8765/api/gmail/callback`도 함께 등록
+> Gmail 전용 콜백(`/api/gmail/callback`)은 없어졌습니다. 아래 로그인 주소 하나만 등록하면
+> 로그인과 Gmail 읽기 권한이 함께 처리됩니다. 이미 등록해 둔 Gmail 콜백은 지워도 됩니다.
+
+- 승인된 리디렉션 URI에 `https://backoffice-ai-production.up.railway.app/api/auth/callback` 추가
+- 같은 값을 Railway `OFFICE_AUTH_REDIRECT_URI`에도 등록 — **한 글자라도 다르면 `redirect_uri_mismatch`**
+- 로컬에서도 쓸 거면 `http://127.0.0.1:8765/api/auth/callback`도 함께 등록
 
 ### 배포 환경 대응 — 완료됨
 
@@ -204,10 +208,10 @@ Railway에 추가할 변수는 하나입니다.
 ### 등록할 곳
 | 변수 | 위치 | 용도 |
 |---|---|---|
-| `OPENAI_API_KEY` | 워커 env | 콘텐츠·인스타툰 생성 |
+| `OPENAI_API_KEY` | 워커 env | 블로그 콘텐츠 생성 |
 | `OPENAI_BASE_URL` | 워커 env | 비우면 OpenAI. 현재 예시값은 NVIDIA NIM `https://integrate.api.nvidia.com/v1` |
 | `OPENAI_MODEL` | 워커 env | 기본 `gpt-3.5-turbo` |
-| `INSTAGRAM_TOON_MODEL` | 워커 env | 기본 `gpt-5.6-luna` |
+| `INSTAGRAM_TOON_MODEL` | 워커 env | **로컬 CLI 전용.** 대시보드 인스타툰은 Kotlin 으로 옮겨 `OFFICE_AI_NEWS_SUMMARY_MODEL` 을 씁니다 |
 | `OFFICE_AI_NEWS_OPEN_AI_API_KEY` | Railway | 백엔드 AI 뉴스 요약 |
 | `OFFICE_AI_NEWS_OPEN_AI_BASE_URL` | Railway | 워커의 `OPENAI_BASE_URL` 과 같은 형식. 버전 경로까지 포함한다: `https://integrate.api.nvidia.com/v1` |
 | `OFFICE_AI_NEWS_SUMMARY_PROVIDER` | Railway | **`openai` 로 바꿔야 한다.** 기본값 `ollama` 로 두면 이 설정이 전부 무시된다 |

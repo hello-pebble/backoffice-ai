@@ -52,6 +52,7 @@ LOG_FILE = LOGS_DIR / 'backoffice.log'
 KEYWORD_COLLECTION_TIME = os.getenv('KEYWORD_COLLECTION_TIME', '09:00')
 CONTENT_GENERATION_TIME = os.getenv('CONTENT_GENERATION_TIME', '09:30')
 POSTING_TIME = os.getenv('POSTING_TIME', '10:00')
+MORNING_PREP_TIME = os.getenv('MORNING_PREP_TIME', '06:30')  # 아침 점검 전 소식·요약·초안 사전 준비
 
 # 콘텐츠 생성 설정
 MIN_CONTENT_LENGTH = int(os.getenv('MIN_CONTENT_LENGTH', '1500'))
@@ -59,6 +60,11 @@ MAX_CONTENT_LENGTH = int(os.getenv('MAX_CONTENT_LENGTH', '3000'))
 
 # 키워드 수집 설정
 MIN_SEARCH_VOLUME = int(os.getenv('MIN_SEARCH_VOLUME', '100'))
+# 구글 트렌드 일간 RSS. 지역 코드와, 키워드·관련 뉴스 제목에 하나라도 들어 있어야 통과하는 포함어(쉼표 구분, 비우면 전부 통과).
+GOOGLE_TRENDS_GEO = os.getenv('GOOGLE_TRENDS_GEO', 'KR')
+GOOGLE_TRENDS_HOURS = int(os.getenv('GOOGLE_TRENDS_HOURS', '168'))  # 최근 며칠치를 볼지(시간). 168 = 7일, 구글이 받는 최대
+KEYWORD_INCLUDE = [w.strip().lower() for w in os.getenv('KEYWORD_INCLUDE', 'AI,인공지능,GPT,ChatGPT,챗GPT,Gemini,제미나이,Claude,클로드,OpenAI,오픈AI,딥마인드,엔비디아,LLM,로봇,자율주행,반도체').split(',') if w.strip()]
+KEYWORD_EXCLUDE = [w.strip().lower() for w in os.getenv('KEYWORD_EXCLUDE', '').split(',') if w.strip()]
 MAX_KEYWORDS_PER_DAY = int(os.getenv('MAX_KEYWORDS_PER_DAY', '10'))
 
 # Selenium 설정

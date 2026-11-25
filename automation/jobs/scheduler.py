@@ -8,12 +8,15 @@ from datetime import datetime
 from config.settings import (
     KEYWORD_COLLECTION_TIME,
     CONTENT_GENERATION_TIME,
-    POSTING_TIME
+    POSTING_TIME,
+    MORNING_PREP_TIME
 )
 from automation.shared.logger import logger
+from automation.shared.clock import KST
 from automation.jobs.keyword_collector import KeywordCollector
 from automation.jobs.content_generator import ContentGenerator
 from automation.jobs.blog_poster import BlogPoster
+from automation.shared.backend_client import BackendClient
 
 
 class Scheduler:
@@ -21,7 +24,8 @@ class Scheduler:
     
     def __init__(self):
         """스케줄러 초기화"""
-        self.scheduler = BlockingScheduler()
+        # 컨테이너 TZ 가 UTC 여도 *_TIME 은 한국시간으로 읽는다. 백엔드가 JVM 타임존을 고정하는 것과 같은 원칙이다.
+        self.scheduler = BlockingScheduler(timezone=KST)
         self.keyword_collector = KeywordCollector()
         self.content_generator = ContentGenerator()
         self.blog_poster = BlogPoster()
@@ -62,6 +66,26 @@ class Scheduler:
         )
         logger.info(f"블로그 포스팅 스케줄 등록: 매일 {POSTING_TIME}")
     
+    def schedule_morning_prep(self):
+        """아침 점검 전에 백엔드가 소식·요약·초안을 미리 만들어 두게 한다. 정시 실행의 소유는 워커다."""
+        hour, minute = map(int, MORNING_PREP_TIME.split(':'))
+        self.scheduler.add_job(
+            self._run_morning_prep,
+            trigger=CronTrigger(hour=hour, minute=minute),
+            id='morning_prep',
+            name='아침 사전 준비',
+            replace_existing=True
+        )
+        logger.info(f"아침 사전 준비 스케줄 등록: 매일 {MORNING_PREP_TIME}")
+
+    def _run_morning_prep(self):
+        """백엔드 한 번 호출. 단계별 성공·실패는 백엔드가 응답에 담아 준다."""
+        try:
+            result = BackendClient().morning_prep()
+            logger.info(f"아침 사전 준비 완료: {result}")
+        except Exception as e:
+            logger.error(f"아침 사전 준비 실패: {e}")
+
     def _run_keyword_collection(self):
         """키워드 수집 작업 실행"""
         logger.info("=" * 50)
@@ -103,6 +127,7 @@ class Scheduler:
         self.schedule_keyword_collection()
         self.schedule_content_generation()
         self.schedule_posting()
+        self.schedule_morning_prep()
         
         try:
             self.scheduler.start()
