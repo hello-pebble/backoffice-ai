@@ -5,6 +5,16 @@
 
 - 화면과 API: [`backend/`](backend/) (Kotlin·Spring) + [`frontend/`](frontend/) (정적 파일)
 - 블로그 자동화 워커: [`automation/`](automation/) (Python)
+- **데모**: [backoffice-ai-orpin.vercel.app](https://backoffice-ai-orpin.vercel.app/) → 로그인 화면의 "데모로 둘러보기"
+  (현재 백엔드를 Railway에서 오라클 클라우드로 이전 중이라 일시적으로 접속이 안 될 수 있습니다)
+
+## 아키텍처
+
+![백오피스 AI 시스템 구조](docs/architecture.svg)
+
+프런트(Vercel 정적 화면)가 Backend API(Kotlin/Spring)를 호출하고, Backend가 Postgres(Supabase)에 쓰고,
+LLM 제공자(OpenAI 호환·Ollama·Google Imagen)로 콘텐츠를 생성하고, Google·Slack·토스증권과 연동하고,
+블로그 발행은 별도 Python 워커에 비동기로 맡깁니다.
 
 ## 주요 기능
 

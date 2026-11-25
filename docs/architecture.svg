@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg viewBox="0 0 900 420" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="architecture-title architecture-desc" id="architecture-root">
+      <title id="architecture-title">백오피스 AI 시스템 구조</title>
+      <desc id="architecture-desc">프런트엔드가 백엔드 API를 호출하고, 백엔드가 Postgres·LLM 제공자·자동화 워커·외부 연동 서비스와 통신하는 구조를 보여준다.</desc>
+      <defs>
+      <style>@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&amp;family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@400;500;600&amp;family=Noto+Serif:ital@0;1&amp;family=Noto+Sans+KR:wght@400;500;600&amp;family=Noto+Serif+KR:wght@400&amp;family=Noto+Sans+TC:wght@400;500;600&amp;family=Noto+Serif+TC:wght@400&amp;display=swap');
+      #architecture-root { --color-paper:   #f5f5f5;
+      --color-ink:     #2d3142;
+      --color-muted:   #4f5d75;
+      --color-accent:  #bf4520;
+      --font-sans:     'Geist', 'Noto Sans KR', system-ui, sans-serif;
+      --font-serif:    'Instrument Serif', 'Noto Serif KR', serif;
+      --font-mono:     'Geist Mono', ui-monospace, monospace; }
+      #architecture-root { font-family: var(--font-sans); color: var(--color-ink); }
+      #architecture-root .wrap { overflow-x: auto; }</style>
+        <pattern id="architecture-dots" width="22" height="22" patternUnits="userSpaceOnUse">
+          <circle cx="1" cy="1" r="0.9" fill="#2d3142" fill-opacity="0.10"/>
+        </pattern>
+        <marker id="architecture-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#4f5d75"/></marker>
+        <marker id="architecture-arrow-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#bf4520"/></marker>
+        <marker id="architecture-arrow-link" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#2e5aa8"/></marker>
+      </defs>
+
+      <rect width="100%" height="100%" fill="#f5f5f5"/>
+
+      <!-- Zone: 외부 연동 (drawn before arrows and nodes) -->
+      <rect x="432" y="208" width="400" height="108" rx="8"
+            fill="#2d3142" stroke="#2d3142" stroke-width="0.8" fill-opacity="0.02" stroke-opacity="0.10"/>
+      <rect x="578" y="212" width="88" height="12" rx="2" fill="#f5f5f5"/>
+      <text x="622" y="221" fill="#5a6580" font-size="7" font-family="'Geist Mono', 'Noto Sans KR', monospace"
+            text-anchor="middle" letter-spacing="0.14em">외부 연동</text>
+
+      <!-- Arrows (behind nodes) -->
+      <!-- 1. Frontend -> Backend -->
+      <line x1="184" y1="72" x2="320" y2="72" stroke="#2e5aa8" stroke-width="1.2" marker-end="url(#architecture-arrow-link)"/>
+      <!-- 2. Backend -> Postgres (primary flow, accent) -->
+      <line x1="496" y1="72" x2="632" y2="72" stroke="#bf4520" stroke-width="1.4" marker-end="url(#architecture-arrow-accent)"/>
+      <!-- 3. Backend -> Worker (dashed async) -->
+      <path d="M 360,104 V 164 Q 360,172 352,172 H 120 Q 112,172 112,180 V 240"
+            fill="none" stroke="#4f5d75" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#architecture-arrow)"/>
+      <!-- 4. Backend -> LLM providers -->
+      <path d="M 440,104 V 188 Q 440,196 432,196 H 324 Q 316,196 316,204 V 240"
+            fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#architecture-arrow)"/>
+      <!-- 5. Backend -> 외부 연동 zone -->
+      <path d="M 460,104 V 148 Q 460,156 468,156 H 624 Q 632,156 632,164 V 208"
+            fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#architecture-arrow)"/>
+
+      <!-- Arrow labels -->
+      <rect x="220" y="66" width="48" height="12" rx="2" fill="#f5f5f5"/>
+      <text x="244" y="75" fill="#2e5aa8" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">HTTPS</text>
+
+      <rect x="540" y="66" width="32" height="12" rx="2" fill="#f5f5f5"/>
+      <text x="556" y="75" fill="#bf4520" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">SQL</text>
+
+      <rect x="86" y="166" width="48" height="12" rx="2" fill="#f5f5f5"/>
+      <text x="110" y="175" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">ASYNC</text>
+
+      <rect x="298" y="190" width="36" height="12" rx="2" fill="#f5f5f5"/>
+      <text x="316" y="199" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">CALL</text>
+
+      <rect x="608" y="150" width="32" height="12" rx="2" fill="#f5f5f5"/>
+      <text x="624" y="159" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">API</text>
+
+      <!-- Node: Frontend (external) -->
+      <rect x="40" y="40" width="144" height="64" rx="6" fill="#f5f5f5"/>
+      <rect x="40" y="40" width="144" height="64" rx="6" fill="#2d3142" stroke="#2d3142" stroke-width="1" fill-opacity="0.03" stroke-opacity="0.30"/>
+      <rect x="48" y="48" width="34" height="12" rx="2" fill="none" stroke="#2d3142" stroke-width="0.8" stroke-opacity="0.22"/>
+      <text x="65" y="57" fill="#5a6580" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">WEB</text>
+      <text x="112" y="76" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', 'Noto Sans KR', sans-serif" text-anchor="middle">Frontend</text>
+      <text x="112" y="92" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">Vercel · static</text>
+
+      <!-- Node: Backend (focal) -->
+      <rect x="320" y="40" width="176" height="64" rx="6" fill="#f5f5f5"/>
+      <rect x="320" y="40" width="176" height="64" rx="6" fill="#bf4520" stroke="#bf4520" stroke-width="1" fill-opacity="0.08"/>
+      <rect x="328" y="48" width="32" height="12" rx="2" fill="none" stroke="#bf4520" stroke-width="0.8" stroke-opacity="0.50"/>
+      <text x="344" y="57" fill="#bf4520" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">API</text>
+      <text x="408" y="76" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', 'Noto Sans KR', sans-serif" text-anchor="middle">Backend API</text>
+      <text x="408" y="92" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">Kotlin · Spring Boot</text>
+
+      <!-- Node: Postgres (store) -->
+      <rect x="632" y="40" width="144" height="64" rx="6" fill="#f5f5f5"/>
+      <rect x="632" y="40" width="144" height="64" rx="6" fill="#2d3142" stroke="#4f5d75" stroke-width="1" fill-opacity="0.05"/>
+      <rect x="640" y="48" width="26" height="12" rx="2" fill="none" stroke="#4f5d75" stroke-width="0.8" stroke-opacity="0.50"/>
+      <text x="653" y="57" fill="#4f5d75" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">DB</text>
+      <text x="704" y="76" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', 'Noto Sans KR', sans-serif" text-anchor="middle">Postgres</text>
+      <text x="704" y="92" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">Supabase</text>
+
+      <!-- Node: Worker (optional / async) -->
+      <rect x="40" y="240" width="144" height="64" rx="6" fill="#f5f5f5"/>
+      <rect x="40" y="240" width="144" height="64" rx="6" fill="#2d3142" stroke="#2d3142" stroke-width="1" stroke-dasharray="4,3" fill-opacity="0.02" stroke-opacity="0.20"/>
+      <rect x="48" y="248" width="30" height="12" rx="2" fill="none" stroke="#2d3142" stroke-width="0.8" stroke-opacity="0.20"/>
+      <text x="63" y="257" fill="#5a6580" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">JOB</text>
+      <text x="112" y="276" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', 'Noto Sans KR', sans-serif" text-anchor="middle">자동화 워커</text>
+      <text x="112" y="292" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">Python · keyword→post</text>
+
+      <!-- Node: LLM Providers (external) -->
+      <rect x="232" y="240" width="168" height="64" rx="6" fill="#f5f5f5"/>
+      <rect x="232" y="240" width="168" height="64" rx="6" fill="#2d3142" stroke="#2d3142" stroke-width="1" fill-opacity="0.03" stroke-opacity="0.30"/>
+      <rect x="240" y="248" width="30" height="12" rx="2" fill="none" stroke="#2d3142" stroke-width="0.8" stroke-opacity="0.22"/>
+      <text x="255" y="257" fill="#5a6580" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">LLM</text>
+      <text x="316" y="276" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', 'Noto Sans KR', sans-serif" text-anchor="middle">LLM 제공자</text>
+      <text x="316" y="292" fill="#4f5d75" font-size="9" font-family="'Geist Mono', 'Noto Sans KR', monospace" text-anchor="middle">OpenAI 호환 · Ollama · Imagen</text>
+
+      <!-- Node: Google (external, inside zone) -->
+      <rect x="448" y="240" width="112" height="64" rx="6" fill="#f5f5f5"/>
+      <rect x="448" y="240" width="112" height="64" rx="6" fill="#2d3142" stroke="#2d3142" stroke-width="1" fill-opacity="0.03" stroke-opacity="0.30"/>
+      <rect x="456" y="248" width="30" height="12" rx="2" fill="none" stroke="#2d3142" stroke-width="0.8" stroke-opacity="0.22"/>
+      <text x="471" y="257" fill="#5a6580" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">EXT</text>
+      <text x="504" y="276" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', 'Noto Sans KR', sans-serif" text-anchor="middle">Google</text>
+      <text x="504" y="292" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">OAuth · Gmail</text>
+
+      <!-- Node: Slack (external, inside zone) -->
+      <rect x="576" y="240" width="112" height="64" rx="6" fill="#f5f5f5"/>
+      <rect x="576" y="240" width="112" height="64" rx="6" fill="#2d3142" stroke="#2d3142" stroke-width="1" fill-opacity="0.03" stroke-opacity="0.30"/>
+      <rect x="584" y="248" width="30" height="12" rx="2" fill="none" stroke="#2d3142" stroke-width="0.8" stroke-opacity="0.22"/>
+      <text x="599" y="257" fill="#5a6580" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">EXT</text>
+      <text x="632" y="276" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', 'Noto Sans KR', sans-serif" text-anchor="middle">Slack</text>
+      <text x="632" y="292" fill="#4f5d75" font-size="9" font-family="'Geist Mono', 'Noto Sans KR', monospace" text-anchor="middle">알림 · 검토 링크</text>
+
+      <!-- Node: Toss (external, inside zone) -->
+      <rect x="704" y="240" width="112" height="64" rx="6" fill="#f5f5f5"/>
+      <rect x="704" y="240" width="112" height="64" rx="6" fill="#2d3142" stroke="#2d3142" stroke-width="1" fill-opacity="0.03" stroke-opacity="0.30"/>
+      <rect x="712" y="248" width="30" height="12" rx="2" fill="none" stroke="#2d3142" stroke-width="0.8" stroke-opacity="0.22"/>
+      <text x="727" y="257" fill="#5a6580" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">EXT</text>
+      <text x="760" y="276" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', 'Noto Sans KR', sans-serif" text-anchor="middle">토스증권</text>
+      <text x="760" y="292" fill="#4f5d75" font-size="9" font-family="'Geist Mono', 'Noto Sans KR', monospace" text-anchor="middle">국내 종목 현재가</text>
+
+      <!-- Legend strip -->
+      <line x1="40" y1="336" x2="860" y2="336" stroke="#2d3142" stroke-width="0.8" stroke-opacity="0.10"/>
+      <text x="40" y="352" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.18em">LEGEND</text>
+
+      <rect x="40" y="368" width="14" height="10" rx="2" fill="#bf4520" stroke="#bf4520" stroke-width="1" fill-opacity="0.08"/>
+      <text x="60" y="376" fill="#4f5d75" font-size="8.5" font-family="'Geist', 'Noto Sans KR', sans-serif">핵심 API 서버</text>
+
+      <rect x="180" y="368" width="14" height="10" rx="2" fill="#2d3142" stroke="#4f5d75" stroke-width="1" fill-opacity="0.05"/>
+      <text x="200" y="376" fill="#4f5d75" font-size="8.5" font-family="'Geist', 'Noto Sans KR', sans-serif">데이터 저장소</text>
+
+      <rect x="320" y="368" width="14" height="10" rx="2" fill="#2d3142" stroke="#2d3142" stroke-width="1" fill-opacity="0.03" stroke-opacity="0.30"/>
+      <text x="340" y="376" fill="#4f5d75" font-size="8.5" font-family="'Geist', 'Noto Sans KR', sans-serif">외부 서비스</text>
+
+      <rect x="460" y="368" width="14" height="10" rx="2" fill="#2d3142" stroke="#2d3142" stroke-width="1" stroke-dasharray="4,3" fill-opacity="0.02" stroke-opacity="0.20"/>
+      <text x="480" y="376" fill="#4f5d75" font-size="8.5" font-family="'Geist', 'Noto Sans KR', sans-serif">비동기 작업</text>
+
+      <line x1="600" y1="373" x2="628" y2="373" stroke="#2e5aa8" stroke-width="1.2" marker-end="url(#architecture-arrow-link)"/>
+      <text x="636" y="376" fill="#4f5d75" font-size="8.5" font-family="'Geist', 'Noto Sans KR', sans-serif">HTTP 요청</text>
+
+      <line x1="736" y1="373" x2="764" y2="373" stroke="#bf4520" stroke-width="1.4" marker-end="url(#architecture-arrow-accent)"/>
+      <text x="772" y="376" fill="#4f5d75" font-size="8.5" font-family="'Geist', 'Noto Sans KR', sans-serif">주요 흐름</text>
+    </svg>
